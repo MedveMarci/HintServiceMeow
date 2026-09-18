@@ -1,7 +1,5 @@
 <div align="center"><h1>It's a fork of the original plugin, and I have made some modifications to it. The original plugin can be found <a href="https://github.com/MeowServer/HintServiceMeow">here</a>!</h1></div>
 
----
-
 ## Language / 语言 / Língua / Язык
 
 ### [English](Docs/English/README.md)
@@ -14,7 +12,7 @@
 
 ---
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/H3TACT3Buh) [![GitHub Release](https://img.shields.io/github/v/release/MeowServer/HintServiceMeow)](https://github.com/MeowServer/HintServiceMeow/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/H3TACT3Buh) [![GitHub Release](https://img.shields.io/github/v/release/MedveMarci/HintServiceMeow)](https://github.com/MedveMarci/HintServiceMeow/releases)
 
 ## Introduction
 
@@ -27,7 +25,7 @@ position on a player's screen.
 
 To install this plugin, follow these steps:
 
-1. Go to the [Release Page](https://github.com/MeowServer/HintServiceMeow/releases) and download the latest
+1. Go to the [Release Page](https://github.com/MedveMarci/HintServiceMeow/releases) and download the latest
    `HintServiceMeow.dll`. Then, paste it into your plugin folder.
 2. If you are using **LabAPI** (the default API), place `Harmony.dll` into the **dependencies** folder.
 3. Restart your server.
@@ -68,6 +66,7 @@ Here are some useful resources to get you started:
 Thank you to everyone who has contributed to HintServiceMeow!
 Your pull requests, bug reports, and suggestions help keep this project running.
 
+- [@MeowServer](https://github.com/MeowServer) - For creating the original plugin.
 - [@Someone](https://github.com/Someone-193) - For adding code style check.
 - [XLittleLeft](https://github.com/XLittleLeft) - For adding LabAPI support.
 - [Firething](https://github.com/Firething) - For adding Portuguese translation.
