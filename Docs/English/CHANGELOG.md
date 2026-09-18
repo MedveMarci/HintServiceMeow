@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Config and templates for `Hint` and `DynamicHint`. Config can be used for YAML serialization, while template can be used to quickly replicate hints with same properties.
 - `AbstractHintTemplate`, `DynamicHintConfig`, `DynamicHintPositionConfig`, `DynamicHintTempalte`, `HintConfig`, `HintPositionConfig`, and `HintTemplate` Classes.
 #### More extensions
-- Added comprehensive extension methods for Player classes of both Exiled and LabAPI.
+- Added comprehensive extension methods for Player classes.
 - Added AddHint overloads to support adding multiple hints simultaneously via IEnumerable or params arrays.
 - Added hint retrieval (GetHint, TryGetHint, GetHints), removal(RemoveHint, RemoveHints), and limited-time showing(ShowHint, ShowHints) player extension method.
 - Added CommonHint(Item hint, map hint, role hint, and other hint) player extension methods.
