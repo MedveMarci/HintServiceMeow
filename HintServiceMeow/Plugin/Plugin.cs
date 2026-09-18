@@ -1,4 +1,5 @@
 using System;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Utilities;
 using HintServiceMeow.Core.Utilities.Patch;
 using HintServiceMeow.Core.Utilities.Tools;
@@ -60,9 +61,10 @@ internal class Plugin : LabApi.Loader.Features.Plugins.Plugin
     private static void OnWaitingForPlayers()
     {
         Patcher.Patch();
+        VersionManager.CheckForUpdates();
     }
 
-    private void OnLeft(PlayerLeftEventArgs ev)
+    private static void OnLeft(PlayerLeftEventArgs ev)
     {
         PlayerUI.Destruct(ev.Player.ReferenceHub);
         PlayerDisplay.Dispose(ev.Player.ReferenceHub);
