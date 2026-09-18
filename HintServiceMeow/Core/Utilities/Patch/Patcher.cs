@@ -1,62 +1,59 @@
-namespace HintServiceMeow.Core.Utilities.Patch
+using System;
+using System.Reflection;
+using HarmonyLib;
+using Hints;
+using LabApi.Features.Wrappers;
+
+namespace HintServiceMeow.Core.Utilities.Patch;
+
+/// <summary>
+///     Provides methods to apply and remove Harmony patches used by HintServiceMeow.
+/// </summary>
+public static class Patcher
 {
-    using System;
-    using System.Reflection;
-    using HarmonyLib;
+    /// <summary>
+    ///     Gets the active <see cref="HarmonyLib.Harmony" /> instance used to manage patches, or <see langword="null" /> if
+    ///     patching has not been applied.
+    /// </summary>
+    public static Harmony? Harmony { get; private set; }
 
     /// <summary>
-    /// Provides methods to apply and remove Harmony patches used by HintServiceMeow.
+    ///     Applies all Harmony patches required by HintServiceMeow, including patches for hint display and hint sending
+    ///     methods.
     /// </summary>
-    public static class Patcher
+    public static void Patch()
     {
-        /// <summary>
-        /// Gets the active <see cref="HarmonyLib.Harmony"/> instance used to manage patches, or <see langword="null"/> if patching has not been applied.
-        /// </summary>
-        public static Harmony? Harmony { get; private set; }
+        Harmony = new Harmony("HintServiceMeowHarmony" + Guid.NewGuid());
 
-        /// <summary>
-        /// Applies all Harmony patches required by HintServiceMeow, including patches for hint display and hint sending methods.
-        /// </summary>
-        public static void Patch()
-        {
-            Harmony = new Harmony("HintServiceMeowHarmony" + Guid.NewGuid());
+        // Unpatch all other patches
+        MethodInfo hintDisplayMethod = typeof(HintDisplay).GetMethod(nameof(HintDisplay.Show))!;
+        MethodInfo sendHintMethod1 = typeof(Player).GetMethod(nameof(Player.SendHint), [typeof(string), typeof(float)])!;
+        MethodInfo sendHintMethod2 = typeof(Player).GetMethod(nameof(Player.SendHint), [typeof(string), typeof(HintEffect[]), typeof(float)])!;
+        MethodInfo? sendHintMethod3 = typeof(Player).GetMethod(nameof(Player.SendHint), [typeof(string), typeof(HintParameter[]), typeof(HintEffect[]), typeof(float)]);
 
-            // Unpatch all other patches
-            MethodInfo hintDisplayMethod = typeof(Hints.HintDisplay).GetMethod(nameof(Hints.HintDisplay.Show))!;
-            MethodInfo sendHintMethod1 = typeof(LabApi.Features.Wrappers.Player).GetMethod(nameof(LabApi.Features.Wrappers.Player.SendHint), [typeof(string), typeof(float)])!;
-            MethodInfo sendHintMethod2 = typeof(LabApi.Features.Wrappers.Player).GetMethod(nameof(LabApi.Features.Wrappers.Player.SendHint), [typeof(string), typeof(Hints.HintEffect[]), typeof(float)])!;
-            Harmony.Unpatch(hintDisplayMethod, HarmonyPatchType.All);
-            Harmony.Unpatch(sendHintMethod1, HarmonyPatchType.All);
-            Harmony.Unpatch(sendHintMethod2, HarmonyPatchType.All);
+        Harmony.Unpatch(hintDisplayMethod, HarmonyPatchType.All);
+        Harmony.Unpatch(sendHintMethod1, HarmonyPatchType.All);
+        Harmony.Unpatch(sendHintMethod2, HarmonyPatchType.All);
 
-            Type patchType = typeof(Patches);
+        if (sendHintMethod3 != null)
+            Harmony.Unpatch(sendHintMethod3, HarmonyPatchType.All);
 
-            // Patch the method
-            Harmony.Patch(hintDisplayMethod, new HarmonyMethod(patchType.GetMethod(nameof(Patches.HintDisplayPatch))));
-            Harmony.Patch(sendHintMethod1, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch1))));
-            Harmony.Patch(sendHintMethod2, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch2))));
+        Type patchType = typeof(Patches);
 
-#if EXILED
-            // Exiled methods
-            MethodInfo showHintMethod1 = typeof(Exiled.API.Features.Player).GetMethod(nameof(Exiled.API.Features.Player.ShowHint), [typeof(string), typeof(float)])!;
-            MethodInfo showHintMethod2 = typeof(Exiled.API.Features.Player).GetMethod(nameof(Exiled.API.Features.Player.ShowHint), [typeof(Exiled.API.Features.Hint)])!;
+        // Patch the method
+        Harmony.Patch(hintDisplayMethod, new HarmonyMethod(patchType.GetMethod(nameof(Patches.HintDisplayPatch))));
+        Harmony.Patch(sendHintMethod1, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch1))));
+        Harmony.Patch(sendHintMethod2, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch2))));
 
-            Harmony.Unpatch(showHintMethod1, HarmonyPatchType.All);
-            Harmony.Unpatch(showHintMethod2, HarmonyPatchType.All);
+        if (sendHintMethod3 != null)
+            Harmony.Patch(sendHintMethod3, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch3))));
+    }
 
-            MethodInfo exiledHintPatch1 = patchType.GetMethod(nameof(Patches.ExiledHintPatch1))!;
-            MethodInfo exiledHintPatch2 = patchType.GetMethod(nameof(Patches.ExiledHintPatch2))!;
-            Harmony.Patch(showHintMethod1, new HarmonyMethod(exiledHintPatch1));
-            Harmony.Patch(showHintMethod2, new HarmonyMethod(exiledHintPatch2));
-#endif
-        }
-
-        /// <summary>
-        /// Removes all Harmony patches applied by this patcher.
-        /// </summary>
-        public static void Unpatch()
-        {
-            Harmony?.UnpatchAll();
-        }
+    /// <summary>
+    ///     Removes all Harmony patches applied by this patcher.
+    /// </summary>
+    public static void Unpatch()
+    {
+        Harmony?.UnpatchAll();
     }
 }

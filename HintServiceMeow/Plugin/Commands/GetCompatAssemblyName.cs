@@ -1,34 +1,33 @@
-﻿namespace HintServiceMeow.Plugin.Commands
+using System;
+using System.Text;
+using CommandSystem;
+using HintServiceMeow.Core.Utilities;
+using HintServiceMeow.Core.Utilities.Pools;
+
+namespace HintServiceMeow.Plugin.Commands;
+
+[CommandHandler(typeof(RemoteAdminCommandHandler))]
+internal class GetCompatAssemblyName : ICommand
 {
-    using System;
-    using System.Text;
-    using CommandSystem;
-    using HintServiceMeow.Core.Utilities;
-    using HintServiceMeow.Core.Utilities.Pools;
+    public string Command => "GetCompatAssemblyName";
 
-    [CommandHandler(typeof(RemoteAdminCommandHandler))]
-    internal class GetCompatAssemblyName : ICommand
+    public string[] Aliases => [];
+
+    public string Description => "Get the name of all the assemblies that are using Compatibility Adaptor in HintServiceMeow";
+
+    public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
     {
-        public string Command => "GetCompatAssemblyName";
+        StringBuilder sb = StringBuilderPool.Instance.Rent();
 
-        public string[] Aliases => Array.Empty<string>();
+        sb.AppendLine("The following assemblies are using Compatibility Adaptor in HintServiceMeow:");
 
-        public string Description => "Get the name of all the assemblies that are using Compatibility Adaptor in HintServiceMeow";
-
-        public bool Execute(ArraySegment<string> arguments, ICommandSender sender, out string response)
+        foreach (string name in CompatibilityAdaptor.RegisteredAssemblies)
         {
-            StringBuilder sb = StringBuilderPool.Instance.Rent();
-
-            sb.AppendLine("The following assemblies are using Compatibility Adaptor in HintServiceMeow:");
-
-            foreach (string name in CompatibilityAdaptor.RegisteredAssemblies)
-            {
-                sb.Append("- ");
-                sb.AppendLine(name);
-            }
-
-            response = StringBuilderPool.Instance.ToStringReturn(sb);
-            return true;
+            sb.Append("- ");
+            sb.AppendLine(name);
         }
+
+        response = StringBuilderPool.Instance.ToStringReturn(sb);
+        return true;
     }
 }

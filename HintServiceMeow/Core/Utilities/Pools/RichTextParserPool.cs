@@ -1,27 +1,16 @@
-﻿namespace HintServiceMeow.Core.Utilities.Pools
+using HintServiceMeow.Core.Utilities.Parser;
+
+namespace HintServiceMeow.Core.Utilities.Pools;
+
+internal class RichTextParserPool : PoolBase<RichTextParser>
 {
-    using System.Collections.Concurrent;
-    using HintServiceMeow.Core.Interface;
-    using HintServiceMeow.Core.Utilities.Parser;
+    public static RichTextParserPool Instance { get; } = new();
 
-    internal class RichTextParserPool : IPool<RichTextParser>
+    protected override void Reset(RichTextParser parser)
+    { }
+
+    protected override RichTextParser Create()
     {
-        private readonly ConcurrentQueue<RichTextParser> richTextParserQueue = new();
-
-        public static RichTextParserPool Instance { get; } = new();
-
-        public RichTextParser Rent()
-        {
-            if (richTextParserQueue.TryDequeue(out RichTextParser rtp))
-                return rtp;
-
-            return new RichTextParser();
-        }
-
-        public void Return(RichTextParser parser)
-        {
-            parser.ClearStatus();
-            richTextParserQueue.Enqueue(parser);
-        }
+        return new RichTextParser();
     }
 }

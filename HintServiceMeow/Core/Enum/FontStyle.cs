@@ -1,12 +1,11 @@
-﻿namespace HintServiceMeow.Core.Enum
-{
-    using System;
+using System;
 
-    [Flags]
-    internal enum TextStyle
-    {
-        Normal = 0x0000,
-        Bold = 0x0001,
-        Italic = 0x0010,
-    }
+namespace HintServiceMeow.Core.Enum;
+
+[Flags]
+internal enum FontStyle
+{
+    Normal = 0x0000,
+    Bold = 0x0001,
+    Italic = 0x0010
 }

@@ -1,45 +1,29 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="../plugin.props" />
+    <Import Project="../plugin.props"/>
 
-  <PropertyGroup>
-    <OutputType>Library</OutputType>
-    <RootNamespace>HintServiceExample</RootNamespace>
-    <AssemblyName>HintServiceExample</AssemblyName>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <Configurations>Debug;Release;Exiled</Configurations>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <RootNamespace>HintServiceExample</RootNamespace>
+        <AssemblyName>HintServiceExample</AssemblyName>
+        <Configurations>Debug;Release</Configurations>
+        <Platforms>x64</Platforms>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Northwood.LabAPI" Version="1.1.7"/>
+    </ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
-    <Optimize>true</Optimize>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Assembly-CSharp" HintPath="$(sl_references)\Assembly-CSharp.dll" Private="False"/>
+        <Reference Include="UnityEngine.CoreModule" HintPath="$(sl_references)\UnityEngine.CoreModule.dll" Private="False"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Northwood.LabAPI" Version="$(LabAPIVersion)" IncludeAssets="compile" PrivateAssets="all" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>..\Dependencies\Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="UnityEngine.CoreModule" HintPath="..\Dependencies\UnityEngine.CoreModule.dll" Private="False" />
-    <Reference Include="Exiled.API" HintPath="..\Dependencies\Exiled.API.dll" Private="False" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\HintServiceMeow\HintServiceMeow.csproj">
-      <Project>{097b585f-438d-4d50-a8ac-0fe0e3a7de77}</Project>
-      <Name>HintServiceMeow</Name>
-    </ProjectReference>
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\HintServiceMeow\HintServiceMeow.csproj">
+            <Project>{097b585f-438d-4d50-a8ac-0fe0e3a7de77}</Project>
+            <Name>HintServiceMeow</Name>
+        </ProjectReference>
+    </ItemGroup>
 </Project>

@@ -1,15 +1,14 @@
-﻿namespace HintServiceMeow.Core.Interface
+namespace HintServiceMeow.Core.Interface;
+
+internal interface ICoroutine
 {
-    internal interface ICoroutine
-    {
-        bool IsRunning { get; }
+    bool IsRunning { get; }
 
-        bool IsPaused { get; }
+    bool IsPaused { get; }
 
-        void Kill();
+    void Kill();
 
-        void Pause();
+    void Pause();
 
-        void Resume();
-    }
+    void Resume();
 }

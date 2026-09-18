@@ -1,36 +1,18 @@
-﻿namespace HintServiceMeow.Core.Utilities.Pools
+using HintServiceMeow.Core.Models.Hints;
+
+namespace HintServiceMeow.Core.Utilities.Pools;
+
+internal class HintPool : PoolBase<Hint>
 {
-    using System;
-    using System.Collections.Concurrent;
-    using HintServiceMeow.Core.Interface;
-    using HintServiceMeow.Core.Models.Hints;
+    public static HintPool Instance { get; } = new();
 
-    internal class HintPool : IPool<Hint>
+    protected override void Reset(Hint hint)
     {
-        private readonly ConcurrentBag<Hint> pool = new();
+        hint.ResetFields();
+    }
 
-        public static HintPool Instance { get; } = new();
-
-        /// <summary>
-        /// Rent a uncleaned hint from the pool.
-        /// </summary>
-        /// <returns>Uncleaned hint.</returns>
-        public Hint Rent()
-        {
-            if (pool.TryTake(out Hint hint))
-                return hint;
-
-            return new Hint();
-        }
-
-        public void Return(Hint item)
-        {
-            if (item == null)
-                throw new ArgumentNullException(nameof(item), "Cannot return null to the pool.");
-
-            item.ResetFields();
-
-            pool.Add(item);
-        }
+    protected override Hint Create()
+    {
+        return new Hint();
     }
 }

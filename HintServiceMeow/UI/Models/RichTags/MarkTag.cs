@@ -1,0 +1,67 @@
+namespace HintServiceMeow.UI.Models.RichTags;
+
+/// <summary>
+///     Represents the highlight mark rich text tag <c>&lt;mark&gt;</c>.
+///     Draws a colored highlight behind the enclosed text. The color value must include an alpha channel.
+///     Example: <c>&lt;mark=#FFFF00AA&gt;text&lt;/mark&gt;</c>.
+/// </summary>
+public sealed class MarkTag : RichTag
+{
+    /// <summary>
+    ///     Semi-transparent yellow highlight. Syntax: <c>&lt;mark=#FFFF00AA&gt;text&lt;/mark&gt;</c>.
+    /// </summary>
+    public static readonly MarkTag Yellow = new("#FFFF00AA");
+
+    /// <summary>
+    ///     Semi-transparent cyan highlight. Syntax: <c>&lt;mark=#00FFFFAA&gt;text&lt;/mark&gt;</c>.
+    /// </summary>
+    public static readonly MarkTag Cyan = new("#00FFFFAA");
+
+    /// <summary>
+    ///     Semi-transparent red highlight. Syntax: <c>&lt;mark=#FF0000AA&gt;text&lt;/mark&gt;</c>.
+    /// </summary>
+    public static readonly MarkTag Red = new("#FF0000AA");
+
+    /// <summary>
+    ///     Semi-transparent green highlight. Syntax: <c>&lt;mark=#00FF00AA&gt;text&lt;/mark&gt;</c>.
+    /// </summary>
+    public static readonly MarkTag Green = new("#00FF00AA");
+
+    private readonly string value;
+
+    /// <inheritdoc />
+    public override string OpenTag => $"<mark={value}>";
+
+    /// <inheritdoc />
+    public override string CloseTag => "</mark>";
+
+    /// <inheritdoc />
+    internal override int Priority => 200;
+
+    private MarkTag(string value)
+    {
+        this.value = value;
+    }
+
+
+    /// <summary>
+    ///     Creates a <see cref="MarkTag" /> with a custom highlight color.
+    /// </summary>
+    /// <param name="hexWithAlpha">
+    ///     An 8-character hex color string with a leading <c>#</c> in RRGGBBAA format,
+    ///     e.g., <c>#FFFF00AA</c>. The alpha channel (<c>AA</c>) controls highlight transparency;
+    ///     use a value less than <c>FF</c> so the underlying text remains visible.
+    ///     Syntax result: <c>&lt;mark=#RRGGBBAA&gt;</c>.
+    /// </param>
+    /// <returns>A new <see cref="MarkTag" /> with the specified highlight color.</returns>
+    public static MarkTag Get(string hexWithAlpha)
+    {
+        return new MarkTag(hexWithAlpha);
+    }
+
+    public static MarkTag Get(ushort red, ushort green, ushort blue, byte alpha)
+    {
+        string hex = $"#{red:X2}{green:X2}{blue:X2}{alpha:X2}";
+        return new MarkTag(hex);
+    }
+}

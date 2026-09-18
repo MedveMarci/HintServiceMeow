@@ -1,37 +1,25 @@
-﻿namespace HintServiceMeow.Core.Utilities.Pools
+using System.Text;
+
+namespace HintServiceMeow.Core.Utilities.Pools;
+
+internal class StringBuilderPool : PoolBase<StringBuilder>
 {
-    using System.Collections.Concurrent;
-    using System.Text;
-    using HintServiceMeow.Core.Interface;
+    public static StringBuilderPool Instance { get; } = new();
 
-    internal class StringBuilderPool : IPool<StringBuilder>
+    public string ToStringReturn(StringBuilder sb)
     {
-        private readonly ConcurrentBag<StringBuilder> stringBuilderQueue = [];
+        string str = sb.ToString();
+        Return(sb);
+        return str;
+    }
 
-        public static StringBuilderPool Instance { get; } = new();
+    protected override void Reset(StringBuilder sb)
+    {
+        sb.Clear();
+    }
 
-        public StringBuilder Rent()
-        {
-            if (stringBuilderQueue.TryTake(out StringBuilder sb))
-            {
-                return sb;
-            }
-
-            return new StringBuilder(2000);
-        }
-
-        public void Return(StringBuilder sb)
-        {
-            sb.Clear();
-
-            stringBuilderQueue.Add(sb);
-        }
-
-        public string ToStringReturn(StringBuilder sb)
-        {
-            string str = sb.ToString();
-            Return(sb);
-            return str;
-        }
+    protected override StringBuilder Create()
+    {
+        return new StringBuilder(2000);
     }
 }

@@ -1,52 +1,39 @@
-﻿namespace HintServiceMeow.Core.Models.Parser
+﻿using System.Linq;
+using HintServiceMeow.Core.Models.Parser.Style;
+
+namespace HintServiceMeow.Core.Models.Parser;
+
+internal struct LineInfo(TextSegment[] characterInfos, LineStyle style, string cleanText, float emptyLineHeight = 0f)
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Linq;
-    using HintServiceMeow.Core.Enum;
+    public TextSegment[] CharacterInfos { get; } = characterInfos;
 
-    internal readonly struct LineInfo
+    public LineStyle Style { get; } = style;
+
+    public string CleanText { get; } = cleanText;
+
+    public float Width
     {
-        public LineInfo(IReadOnlyList<CharacterInfo> characters, HintAlignment alignment, float lineHeight, bool hasLineHeight, float pos, string rawText)
+        get
         {
-            Characters = characters ?? throw new ArgumentNullException(nameof(characters), "Characters cannot be null.");
+            float totalWidth = CharacterInfos.Sum(t => t.Width);
 
-            Alignment = alignment;
-            LineHeight = lineHeight;
-            HasLineHeight = hasLineHeight;
-            Pos = pos;
+            totalWidth += Style.Indent + Style.MarginLeft + Style.MarginRight;
 
-            RawText = rawText;
-
-            if (Characters.Count == 0)
-            {
-                Height = 0;
-                Width = 0;
-            }
-            else
-            {
-                Height = HasLineHeight ? LineHeight : Characters.Max(c => c.Height);
-                Width = Characters.Sum(c => c.Width);
-            }
+            return totalWidth;
         }
+    }
 
-        /// <summary>
-        /// Gets a list of character info that include all the characters after parsed. Include the line break at the end(if exist).
-        /// </summary>
-        public IReadOnlyList<CharacterInfo> Characters { get; }
+    public float Height
+    {
+        get
+        {
+            if (Style.LineHeight != null)
+                return Style.LineHeight.Value;
+            
+            if (CharacterInfos.Length == 0)
+                return emptyLineHeight;
 
-        public HintAlignment Alignment { get; }
-
-        public float LineHeight { get; }
-
-        public bool HasLineHeight { get; }
-
-        public float Pos { get; }
-
-        public string RawText { get; }
-
-        public float Width { get; }
-
-        public float Height { get; }
+            return CharacterInfos.Select(t => t.Height).Prepend(0f).Max();
+        }
     }
 }

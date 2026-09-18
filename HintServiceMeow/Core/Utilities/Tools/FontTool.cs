@@ -1,83 +1,75 @@
-﻿namespace HintServiceMeow.Core.Utilities.Tools
+using System;
+using System.Globalization;
+using System.IO;
+using System.IO.Compression;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using HintServiceMeow.Core.Interface;
+
+namespace HintServiceMeow.Core.Utilities.Tools;
+
+internal class FontTool : IFontTool
 {
-    using System;
-    using System.Collections.Concurrent;
-    using System.Globalization;
-    using System.IO;
-    using System.IO.Compression;
-    using System.Linq;
-    using System.Reflection;
-    using System.Threading.Tasks;
-    using HintServiceMeow.Core.Enum;
-    using HintServiceMeow.Core.Interface;
+    private const float DefaultFontWidth = 67.81861f;
+    private static readonly float[] ChWidth = CreateWidthTable();
 
-    /// <summary>
-    /// Used to get the size of the characters.
-    /// </summary>
-    internal class FontTool : IFontTool
+    public static IFontTool Instance { get; } = new FontTool();
+
+    static FontTool()
     {
-        private const float BaseFontSize = 34.7f;
-        private const float DefaultFontWidth = 67.81861f;
-
-        private static readonly ConcurrentDictionary<char, float> ChWidth = new();
-
-        static FontTool()
+        ConcurrentTaskDispatcher.Instance.Enqueue(() =>
         {
-            ConcurrentTaskDispatcher.Instance.Enqueue(() =>
+            try
             {
-                try
+                using Stream? infoStream = Assembly.GetExecutingAssembly().GetManifestResourceStream("HintServiceMeow.TextWidth");
+
+                if (infoStream is null)
+                    throw new FileNotFoundException("Could not find text width");
+
+                using ZipArchive archive = new(infoStream, ZipArchiveMode.Read);
+                using Stream entryStream = archive.Entries.First(x => x.Name == "TextWidth").Open();
+                using StreamReader reader = new(entryStream);
+
+                while (reader.ReadLine() is { } line)
                 {
-                    using Stream? infoStream = Assembly.GetExecutingAssembly()
-                        .GetManifestResourceStream("HintServiceMeow.TextWidth");
+                    if (line == string.Empty)
+                        continue;
 
-                    if (infoStream is null)
-                        throw new FileNotFoundException("Could not find text width");
+                    int sep = line.IndexOf(':');
+                    if (sep <= 0)
+                        continue;
 
-                    using ZipArchive archive = new(infoStream, ZipArchiveMode.Read);
-                    using Stream entryStream = archive.Entries.First(x => x.Name == "TextWidth").Open();
-                    using StreamReader reader = new(entryStream);
-
-                    string? line;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        if (line == string.Empty)
-                            continue;
-
-                        int sep = line.IndexOf(':');
-                        if (sep <= 0)
-                            continue;
-
-                        char key = (char)int.Parse(line.Substring(0, sep));
-                        float value = float.Parse(line.Substring(sep + 1).TrimStart(), CultureInfo.InvariantCulture);
-
-                        ChWidth[key] = value;
-                    }
+                    char key = (char)int.Parse(line.Substring(0, sep));
+                    float value = float.Parse(line.Substring(sep + 1).TrimStart(), CultureInfo.InvariantCulture);
+                    
+                    ChWidth[key] = value;
                 }
-                catch (Exception ex)
-                {
-                    Logger.Instance.Error(ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Error(ex);
+            }
 
-                return Task.CompletedTask;
-            });
-        }
+            return Task.CompletedTask;
+        });
+    }
 
-        public static IFontTool Instance { get; } = new FontTool();
+    public float GetCharWidth(char c, float fontSize)
+    {
+        if (char.IsControl(c))
+            return 0f;
 
-        public float GetCharWidth(char c, float fontSize, TextStyle style)
-        {
-            if (char.IsControl(c))
-                return 0f;
+        return ChWidth[c];
+    }
 
-            float ratio = fontSize / BaseFontSize * 1.25f; // 1.25 is estimated value
+    private static float[] CreateWidthTable()
+    {
+        float[] table = new float[char.MaxValue + 1];
 
-            if ((style & TextStyle.Bold) == TextStyle.Bold)
-                ratio *= 1.15f;
+        for (int i = 0; i < table.Length; i++)
+            table[i] = DefaultFontWidth;
 
-            if (!ChWidth.TryGetValue(c, out float width))
-                width = DefaultFontWidth;
-
-            return width * ratio;
-        }
+        return table;
     }
 }

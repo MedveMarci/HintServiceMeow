@@ -1,12 +1,11 @@
-﻿namespace HintServiceMeow.Core.Interface
+using System;
+using System.Threading.Tasks;
+
+namespace HintServiceMeow.Core.Interface;
+
+internal interface IConcurrentTaskDispatcher
 {
-    using System;
-    using System.Threading.Tasks;
+    void Enqueue(Func<Task> task);
 
-    internal interface IConcurrentTaskDispatcher
-    {
-        void Enqueue(Func<Task> task);
-
-        Task<T> Enqueue<T>(Func<Task<T>> task);
-    }
+    Task<T> Enqueue<T>(Func<Task<T>> task);
 }

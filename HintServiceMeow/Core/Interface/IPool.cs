@@ -1,9 +1,8 @@
-﻿namespace HintServiceMeow.Core.Interface
-{
-    internal interface IPool<T>
-    {
-        T Rent();
+namespace HintServiceMeow.Core.Interface;
 
-        void Return(T item);
-    }
+internal interface IPool<T>
+{
+    T Rent();
+
+    void Return(T item);
 }

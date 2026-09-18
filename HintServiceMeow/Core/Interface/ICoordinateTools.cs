@@ -1,30 +1,40 @@
-﻿namespace HintServiceMeow.Core.Interface
+using HintServiceMeow.Core.Enum;
+using HintServiceMeow.Core.Models.Hints;
+using HintServiceMeow.Core.Models.Parser;
+
+namespace HintServiceMeow.Core.Interface;
+
+internal interface ICoordinateTools
 {
-    using System.Collections.Generic;
-    using HintServiceMeow.Core.Enum;
-    using HintServiceMeow.Core.Models.Hints;
-    using HintServiceMeow.Core.Models.Parser;
+    float GetYCoordinate(float vOffset);
 
-    internal interface ICoordinateTools
-    {
-        float GetYCoordinate(Hint hint, HintVerticalAlign to);
+    float GetVOffset(float yCoordinate);
 
-        float GetYCoordinate(Hint hint, HintVerticalAlign from, HintVerticalAlign to);
+    float GetYCoordinate(Hint hint, HintVerticalAlign to);
 
-        float GetYCoordinate(float rawYCoordinate, float textHeight, HintVerticalAlign from, HintVerticalAlign to);
+    float GetYCoordinate(Hint hint, HintVerticalAlign from, HintVerticalAlign to);
 
-        float GetXCoordinateWithAlignment(Hint hint);
+    float GetYCoordinate(float rawYCoordinate, float textHeight, HintVerticalAlign from, HintVerticalAlign to);
 
-        float GetXCoordinateWithAlignment(Hint hint, HintAlignment alignment);
+    float GetCurrentYCoordinate(Hint hint, HintVerticalAlign to);
 
-        float GetTextWidth(AbstractHint hint);
+    float GetCurrentYCoordinate(Hint hint, HintVerticalAlign from, HintVerticalAlign to);
 
-        float GetTextWidth(string text, int fontSize, HintAlignment align = HintAlignment.Center);
+    float GetCurrentYCoordinate(float rawYCoordinate, float textHeight, HintVerticalAlign from, HintVerticalAlign to);
 
-        float GetTextHeight(AbstractHint hint);
+    float GetEdgeOffset(float xyRatio, HintAlignment alignment);
 
-        float GetTextHeight(string text, int fontSize, float lineHeight);
+    float GetXCoordinateWithAlignment(Hint hint);
 
-        IReadOnlyList<LineInfo> GetLineInfos(string text, int fontSize, HintAlignment align = HintAlignment.Center);
-    }
+    float GetXCoordinateWithAlignment(Hint hint, HintAlignment alignment);
+
+    float GetTextWidth(AbstractHint hint);
+
+    float GetTextWidth(string text, float fontSize, HintAlignment align = HintAlignment.Center);
+
+    float GetTextHeight(AbstractHint hint);
+
+    float GetTextHeight(string text, float fontSize, float lineHeight);
+
+    LineInfo[] GetLineInfos(string text, float fontSize, HintAlignment align = HintAlignment.Center);
 }

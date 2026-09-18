@@ -1,82 +1,56 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <Import Project="../plugin.props" />
+    <Import Project="../plugin.props"/>
 
-  <PropertyGroup>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <OutputType>Library</OutputType>
-    <RootNamespace>HintServiceMeow</RootNamespace>
-    <AssemblyName>HintServiceMeow</AssemblyName>
-    <FileAlignment>512</FileAlignment>
-    <Deterministic>true</Deterministic>
-    <Configurations>Debug;Exiled;Release</Configurations>
-    <EnforceCodeStyleInBuild>False</EnforceCodeStyleInBuild>
-    <EnableNETAnalyzers>True</EnableNETAnalyzers>
-    <AnalysisLevel>latest</AnalysisLevel>
-    <Description>A SCPSL hint framework that lets multiple plugins display text on player's screen at specified position.</Description>
-    <PackageIcon>logo.png</PackageIcon>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>hsm, scpsl, labapi, exiled</PackageTags>
-    <AssemblyVersion>5.5.0.0</AssemblyVersion>
-    <FileVersion>5.5.1.0</FileVersion>
-    <Title>Hint Service Meow</Title>
-    <Version>5.5.1.0</Version>
-  </PropertyGroup>
+    <PropertyGroup>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <OutputType>Library</OutputType>
+        <RootNamespace>HintServiceMeow</RootNamespace>
+        <AssemblyName>HintServiceMeow</AssemblyName>
+        <Configurations>Debug;Release</Configurations>
+        <EnableNETAnalyzers>True</EnableNETAnalyzers>
+        <AnalysisLevel>latest</AnalysisLevel>
+        <Description>A SCPSL hint framework that lets multiple plugins display text on player's screen at specified position.</Description>
+        <PackageIcon>logo.png</PackageIcon>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>hsm, scpsl, labapi</PackageTags>
+        <AssemblyVersion>6.0.0.0</AssemblyVersion>
+        <FileVersion>6.0.0.0</FileVersion>
+        <Title>Hint Service Meow</Title>
+        <Version>6.0.0.0</Version>
+        <Platforms>x64</Platforms>
+    </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <ErrorReport>prompt</ErrorReport>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="Northwood.LabAPI" Version="1.1.7" IncludeAssets="compile" PrivateAssets="all"/>
+        <PackageReference Include="Lib.Harmony" Version="2.2.2" IncludeAssets="compile" PrivateAssets="all"/>
+    </ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
-    <Optimize>true</Optimize>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Assembly-CSharp" HintPath="$(sl_references)\Assembly-CSharp.dll"/>
+        <Reference Include="Assembly-CSharp-firstpass" HintPath="$(sl_references)\Assembly-CSharp-firstpass.dll"/>
+        <Reference Include="CommandSystem.Core" HintPath="$(sl_references)\CommandSystem.Core.dll" Private="False"/>
+        <Reference Include="Mirror" HintPath="$(sl_references)\Mirror.dll" Private="False"/>
+        <Reference Include="UnityEngine.CoreModule" HintPath="$(sl_references)\UnityEngine.CoreModule.dll" Private="False"/>
+        <Reference Include="System.IO.Compression" Private="False"/>
+    </ItemGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Exiled|AnyCPU'">
-    <AssemblyName>HintServiceMeow-Exiled</AssemblyName>
-    <Optimize>true</Optimize>
-    <ErrorReport>prompt</ErrorReport>
-  </PropertyGroup>
+    <ItemGroup>
+        <EmbeddedResource Include="TextWidth"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Northwood.LabAPI" Version="1.1.5" IncludeAssets="compile" PrivateAssets="all" />
-    <PackageReference Include="Lib.Harmony" Version="2.4.2" IncludeAssets="compile" PrivateAssets="all" />
-    <PackageReference Include="YamlDotNet" Version="16.3.0" IncludeAssets="compile" PrivateAssets="all" />
-    <PackageReference Include="StyleCop.Analyzers" Version="$(StyleCopVersion)" IncludeAssets="All" PrivateAssets="All" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>..\Dependencies\Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\Dependencies\Assembly-CSharp-firstpass.dll</HintPath>
-    </Reference>
-    <Reference Include="CommandSystem.Core" HintPath="..\Dependencies\CommandSystem.Core.dll" Private="False" />
-    <Reference Include="Exiled.API" HintPath="..\Dependencies\Exiled.API.dll" Private="False" />
-    <Reference Include="Exiled.Events" HintPath="..\Dependencies\Exiled.Events.dll" Private="False" />
-    <Reference Include="Mirror" HintPath="..\Dependencies\Mirror.dll" Private="False" />
-    <Reference Include="UnityEngine.CoreModule" HintPath="..\Dependencies\UnityEngine.CoreModule.dll" Private="False" />
-    <Reference Include="System.IO.Compression" Private="False" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="TextWidth" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="..\Docs\logo.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
-
+    <ItemGroup>
+        <None Include="..\Docs\logo.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\README.md">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+        <Exec Command="xcopy &quot;$(TargetPath)&quot; &quot;%appdata%\SCP Secret Laboratory\LabAPI\plugins\global&quot; /y"/>
+    </Target>
 </Project>

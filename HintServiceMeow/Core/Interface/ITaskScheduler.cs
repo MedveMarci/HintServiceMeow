@@ -1,28 +1,27 @@
-﻿namespace HintServiceMeow.Core.Interface
+using System;
+using HintServiceMeow.Core.Enum;
+
+namespace HintServiceMeow.Core.Interface;
+
+internal interface ITaskScheduler : IDisposable
 {
-    using System;
-    using HintServiceMeow.Core.Enum;
+    public TimeSpan Elapsed { get; }
 
-    internal interface ITaskScheduler
-    {
-        public TimeSpan Elapsed { get; }
+    public TimeSpan MinInterval { get; set; }
 
-        public TimeSpan MinInterval { get; set; }
+    public bool InvokeUntilSuccess { get; set; }
 
-        public bool InvokeUntilSuccess { get; set; }
+    public bool IsReadyForNextAction { get; }
 
-        public bool IsReadyForNextAction { get; }
+    void Start(TimeSpan interval, Action callback);
 
-        void Start(TimeSpan interval, Action callback);
+    void Start(TimeSpan interval, Func<bool> callback);
 
-        void Start(TimeSpan interval, Func<bool> callback);
+    void Invoke(float delay = -1f, DelayType delayType = DelayType.Override);
 
-        void Invoke(float delay = -1f, DelayType delayType = DelayType.Override);
+    void Stop();
 
-        void Stop();
+    void Pause();
 
-        void Pause();
-
-        void Resume();
-    }
+    void Resume();
 }

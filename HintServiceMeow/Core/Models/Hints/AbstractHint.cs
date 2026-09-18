@@ -1,502 +1,682 @@
-namespace HintServiceMeow.Core.Models.Hints
+using System;
+using System.ComponentModel;
+using System.Threading;
+using HintServiceMeow.Core.Enum;
+using HintServiceMeow.Core.Interface;
+using HintServiceMeow.Core.Models.Arguments;
+using HintServiceMeow.Core.Models.HintContent;
+using HintServiceMeow.Core.Models.Transition;
+using HintServiceMeow.Core.Utilities;
+using HintServiceMeow.Core.Utilities.Tools;
+
+namespace HintServiceMeow.Core.Models.Hints;
+
+/// <summary>
+///     Represents the base class for all hints displayed on a player's screen.
+///     Provides common properties such as text content, font size, sync speed, and visibility.
+/// </summary>
+public abstract class AbstractHint : INotifyPropertyChanged
 {
-    using System;
-    using System.ComponentModel;
-    using System.Threading;
-    using HintServiceMeow.Core.Enum;
-    using HintServiceMeow.Core.Interface;
-    using HintServiceMeow.Core.Models.Arguments;
-    using HintServiceMeow.Core.Models.HintContent;
-    using HintServiceMeow.Core.Utilities;
-    using HintServiceMeow.Core.Utilities.Tools;
+    private readonly Guid guid = Guid.NewGuid();
+
+    private IUpdateAnalyser analyser = new UpdateAnalyzer();
+
+    private string id = string.Empty;
+
+    private HintSyncSpeed syncSpeed = HintSyncSpeed.Normal;
+
+    private float fontSize = 20f;
+    private Transition.Transition? fontSizeTransition;
+    private TransitionState? fontSizeTransitionState;
+
+    private float lineHeight;
+
+    private AbstractHintContent content = new StringContent(string.Empty);
+
+    private bool hide;
+
+    private ParameterCollection parameters = new();
+
+    private ResolutionOption resolutionOption = ResolutionOption.Offset;
+
+    private float edgeMargin;
+
+    #region Events
 
     /// <summary>
-    /// Represents the base class for all hints displayed on a player's screen.
-    /// Provides common properties such as text content, font size, sync speed, and visibility.
+    ///     Occurs when a property value changes.
     /// </summary>
-    public abstract class AbstractHint : INotifyPropertyChanged
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    #endregion
+
+    #region Constructors
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="AbstractHint" /> class with default values.
+    /// </summary>
+    protected AbstractHint()
+    { }
+
+    /// <summary>
+    ///     Initializes a new instance of the <see cref="AbstractHint" /> class by copying properties from an existing hint.
+    /// </summary>
+    /// <param name="hint">The hint whose properties are copied into this instance.</param>
+    protected AbstractHint(AbstractHint hint)
     {
-        private readonly Guid guid = Guid.NewGuid();
-
-        private IUpdateAnalyser analyser = new UpdateAnalyzer();
-
-        private string id = string.Empty;
-
-        private HintSyncSpeed syncSpeed = HintSyncSpeed.Normal;
-
-        private int fontSize = 20;
-
-        private float lineHeight;
-
-        private AbstractHintContent content = new StringContent(string.Empty);
-
-        private bool hide;
-
-        #region Constructors
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AbstractHint"/> class with default values.
-        /// </summary>
-        protected AbstractHint()
+        Lock.EnterWriteLock();
+        try
         {
+            id = hint.id;
+            syncSpeed = hint.syncSpeed;
+            fontSize = hint.fontSize;
+            lineHeight = hint.lineHeight;
+            content = hint.content;
+            hide = hint.hide;
+            edgeMargin = hint.edgeMargin;
+        }
+        finally
+        {
+            Lock.ExitWriteLock();
+        }
+    }
+
+    #endregion
+
+    #region Properties
+
+    /// <summary>
+    ///     Gets or sets the update analyser used to track and estimate hint update timing.
+    /// </summary>
+    public IUpdateAnalyser UpdateAnalyser
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return analyser;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
         }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AbstractHint"/> class by copying properties from an existing hint.
-        /// </summary>
-        /// <param name="hint">The hint whose properties are copied into this instance.</param>
-        protected AbstractHint(AbstractHint hint)
+        set
         {
             Lock.EnterWriteLock();
             try
             {
-                id = hint.id;
-                syncSpeed = hint.syncSpeed;
-                fontSize = hint.fontSize;
-                lineHeight = hint.lineHeight;
-                content = hint.content;
-                hide = hint.hide;
+                analyser = value;
             }
             finally
             {
                 Lock.ExitWriteLock();
             }
         }
-        #endregion
+    }
 
-        #region Events
-
-        /// <summary>
-        /// Occurs when a property value changes.
-        /// </summary>
-        public event PropertyChangedEventHandler? PropertyChanged;
-
-        #endregion
-
-        #region Properties
-
-        /// <summary>
-        /// Gets or sets the update analyser used to track and estimate hint update timing.
-        /// </summary>
-        public IUpdateAnalyser UpdateAnalyser
+    /// <summary>
+    ///     Gets the unique identifier for this hint instance.
+    /// </summary>
+    public Guid Guid
+    {
+        get
         {
-            get
+            Lock.EnterReadLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return analyser;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                return guid;
             }
-
-            set
+            finally
             {
-                Lock.EnterWriteLock();
-                try
-                {
-                    analyser = value;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
+                Lock.ExitReadLock();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the logical identifier used to group or retrieve this hint.
+    /// </summary>
+    public string Id
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return id;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
             }
         }
 
-        /// <summary>
-        /// Gets the unique identifier for this hint instance.
-        /// </summary>
-        public Guid Guid
+        set
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return guid;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                id = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the synchronization speed that controls how quickly this hint's updates are sent to the display.
+    /// </summary>
+    public HintSyncSpeed SyncSpeed
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return syncSpeed;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
             }
         }
 
-        /// <summary>
-        /// Gets or sets the logical identifier used to group or retrieve this hint.
-        /// </summary>
-        public string Id
+        set
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return id;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                if (syncSpeed == value)
+                    return;
+
+                syncSpeed = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
             }
 
-            set
+            OnHintUpdated(nameof(SyncSpeed));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the font size of the hint text.
+    /// </summary>
+    public float FontSize
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
             {
-                Lock.EnterWriteLock();
-                try
-                {
-                    id = value;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
+                return fontSize;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
             }
         }
 
-        /// <summary>
-        /// Gets or sets the synchronization speed that controls how quickly this hint's updates are sent to the display.
-        /// </summary>
-        public HintSyncSpeed SyncSpeed
+        set
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return syncSpeed;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                if (fontSize == value)
+                    return;
+
+                fontSize = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
             }
 
-            set
+            OnHintUpdated(nameof(FontSize));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the transition effect applied when the font size changes.
+    /// </summary>
+    public Transition.Transition? FontSizeTransition
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
             {
-                Lock.EnterWriteLock();
-                try
-                {
-                    if (syncSpeed == value)
-                        return;
-
-                    syncSpeed = value;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(SyncSpeed));
+                return fontSizeTransition;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
             }
         }
 
-        /// <summary>
-        /// Gets or sets the font size of the hint text.
-        /// </summary>
-        public int FontSize
+        set
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return fontSize;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                if (fontSizeTransition == value)
+                    return;
+
+                fontSizeTransition = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
             }
 
-            set
+            OnHintUpdated(nameof(FontSizeTransition));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the line height offset for the hint text.
+    /// </summary>
+    public float LineHeight
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
             {
-                Lock.EnterWriteLock();
-                try
-                {
-                    if (fontSize == value)
-                        return;
-
-                    fontSize = value;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(FontSize));
+                return lineHeight;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
             }
         }
 
-        /// <summary>
-        /// Gets or sets the line height multiplier for the hint text.
-        /// </summary>
-        public float LineHeight
+        set
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return lineHeight;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                if (lineHeight.Equals(value))
+                    return;
+
+                lineHeight = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
             }
 
-            set
+            OnHintUpdated(nameof(LineHeight));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the content displayed by this hint.
+    /// </summary>
+    public AbstractHintContent Content
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
             {
-                Lock.EnterWriteLock();
-                try
-                {
-                    if (lineHeight.Equals(value))
-                        return;
-
-                    lineHeight = value;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(LineHeight));
+                return content;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
             }
         }
 
-        /// <summary>
-        /// Gets or sets the content displayed by this hint.
-        /// </summary>
-        public AbstractHintContent Content
+        set
         {
-            get
+            Lock.EnterWriteLock();
+            try
             {
-                Lock.EnterReadLock();
-                try
-                {
-                    return content;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
+                if (content == value)
+                    return;
+
+                Content.ContentUpdated -= OnContentUpdate;
+
+                content = value;
+                content.ContentUpdated += OnContentUpdate;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
             }
 
-            set
-            {
-                Lock.EnterWriteLock();
-                try
-                {
-                    if (content == value)
-                        return;
-
-                    Content.ContentUpdated -= OnContentUpdate;
-
-                    content = value;
-                    content.ContentUpdated += OnContentUpdate;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(Content));
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the plain text of this hint when the content is a <see cref="StringContent"/>.
-        /// Returns <see langword="null"/> if the current content is not a <see cref="StringContent"/>.
-        /// </summary>
-        public string? Text
-        {
-            get
-            {
-                Lock.EnterReadLock();
-                try
-                {
-                    if (Content is StringContent)
-                    {
-                        return Content.GetText();
-                    }
-
-                    return null;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
-            }
-
-            set
-            {
-                Lock.EnterWriteLock();
-                try
-                {
-                    if (Content is StringContent textContent)
-                    {
-                        textContent.Text = value;
-                    }
-                    else
-                    {
-                        content.ContentUpdated -= OnContentUpdate;
-                        content = new StringContent(value);
-                        content.ContentUpdated += OnContentUpdate;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Instance.Error(ex);
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(Text));
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the auto-text handler used to dynamically generate hint content.
-        /// Setting this property replaces the current content with an <see cref="AutoContent"/> instance.
-        /// Returns <see langword="null"/> if the current content is not an <see cref="AutoContent"/>.
-        /// </summary>
-        public AutoContent.TextUpdateHandler? AutoText
-        {
-            get
-            {
-                Lock.EnterReadLock();
-                try
-                {
-                    if (Content is AutoContent autoContent)
-                    {
-                        return autoContent.AutoText;
-                    }
-
-                    return null;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
-            }
-
-            set
-            {
-                Lock.EnterWriteLock();
-                try
-                {
-                    content.ContentUpdated -= OnContentUpdate;
-                    content = new AutoContent(value);
-                    content.ContentUpdated += OnContentUpdate;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(AutoText));
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets a value indicating whether this hint is hidden from the player's display.
-        /// </summary>
-        public bool Hide
-        {
-            get
-            {
-                Lock.EnterReadLock();
-                try
-                {
-                    return hide;
-                }
-                finally
-                {
-                    Lock.ExitReadLock();
-                }
-            }
-
-            set
-            {
-                Lock.EnterWriteLock();
-                try
-                {
-                    if (hide == value)
-                        return;
-
-                    hide = value;
-                }
-                finally
-                {
-                    Lock.ExitWriteLock();
-                }
-
-                OnHintUpdated(nameof(Hide));
-            }
-        }
-
-        /// <summary>
-        /// Gets the reader/writer lock used to synchronize access to this hint's fields.
-        /// </summary>
-        protected ReaderWriterLockSlim Lock { get; } = new(LockRecursionPolicy.SupportsRecursion);
-        #endregion
-
-        #region Methods
-
-        /// <summary>
-        /// Attempts to update the hint content in response to an update-available event.
-        /// </summary>
-        /// <param name="ev">The event arguments containing the player display context.</param>
-        public virtual void TryUpdateHint(UpdateAvailableEventArg ev)
-        {
-            Content.TryUpdate(new ContentUpdateArg(this, ev.PlayerDisplay));
-        }
-
-        /// <summary>
-        /// Not thread friendly, should only be used in pool.
-        /// </summary>
-        /// <param name="copyFrom">Copy parameter from.</param>
-        internal void CopyFieldsFrom(AbstractHint copyFrom)
-        {
-            this.id = copyFrom.id;
-            this.syncSpeed = copyFrom.syncSpeed;
-            this.fontSize = copyFrom.fontSize;
-            this.lineHeight = copyFrom.lineHeight;
-            this.content = copyFrom.content;
-            this.hide = copyFrom.hide;
-        }
-
-        /// <summary>
-        /// Not thread friendly, should only be used in pool.
-        /// </summary>
-        internal void ResetFields()
-        {
-            this.id = string.Empty;
-            this.content = null!;
-        }
-
-        /// <summary>
-        /// Raises the <see cref="PropertyChanged"/> event and notifies the update analyser of a change.
-        /// </summary>
-        /// <param name="argumentName">The name of the property that changed.</param>
-        protected virtual void OnHintUpdated(string argumentName)
-        {
-            analyser.OnUpdate();
-
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(argumentName));
-        }
-
-        private void OnContentUpdate()
-        {
             OnHintUpdated(nameof(Content));
         }
-        #endregion
     }
+
+    /// <summary>
+    ///     Gets or sets the plain text of this hint when the content is a <see cref="StringContent" />.
+    ///     Returns <see langword="null" /> if the current content is not a <see cref="StringContent" />.
+    /// </summary>
+    public string? Text
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                if (Content is StringContent) return Content.GetText();
+
+                return null;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+
+        set
+        {
+            Lock.EnterWriteLock();
+            try
+            {
+                if (Content is StringContent textContent)
+                {
+                    textContent.Text = value;
+                }
+                else
+                {
+                    content.ContentUpdated -= OnContentUpdate;
+                    content = new StringContent(value);
+                    content.ContentUpdated += OnContentUpdate;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Instance.Error(ex);
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+
+            OnHintUpdated(nameof(Text));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the auto-text handler used to dynamically generate hint content.
+    ///     Setting this property replaces the current content with an <see cref="AutoContent" /> instance.
+    ///     Returns <see langword="null" /> if the current content is not an <see cref="AutoContent" />.
+    /// </summary>
+    public AutoContent.TextUpdateHandler? AutoText
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                if (Content is AutoContent autoContent) return autoContent.AutoText;
+
+                return null;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+
+        set
+        {
+            Lock.EnterWriteLock();
+            try
+            {
+                content.ContentUpdated -= OnContentUpdate;
+                content = new AutoContent(value);
+                content.ContentUpdated += OnContentUpdate;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+
+            OnHintUpdated(nameof(AutoText));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether this hint is hidden from the player's display.
+    /// </summary>
+    public bool Hide
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return hide;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+
+        set
+        {
+            Lock.EnterWriteLock();
+            try
+            {
+                if (hide == value)
+                    return;
+
+                hide = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+
+            OnHintUpdated(nameof(Hide));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets the way the HintParser handle hint's position when the screen resolution changes.
+    /// </summary>
+    public ResolutionOption ResolutionOption
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return resolutionOption;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+
+        set
+        {
+            Lock.EnterWriteLock();
+            try
+            {
+                if (resolutionOption == value)
+                    return;
+                resolutionOption = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+
+            OnHintUpdated(nameof(ResolutionOption));
+        }
+    }
+
+    /// <summary>
+    ///     Gets or sets how far, in units, the hint is kept away from the screen edge when
+    ///     <see cref="ResolutionOption" /> is <see cref="ResolutionOption.Offset" /> and the hint
+    ///     is left- or right-aligned. <c>0</c> (default) sends the hint all the way to the edge;
+    ///     a positive value insets it inward by that amount.
+    /// </summary>
+    public float EdgeMargin
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return edgeMargin;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+
+        set
+        {
+            Lock.EnterWriteLock();
+            try
+            {
+                if (edgeMargin == value)
+                    return;
+                edgeMargin = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+
+            OnHintUpdated(nameof(EdgeMargin));
+        }
+    }
+
+    public ParameterCollection Parameters
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return parameters;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+    }
+
+    internal TransitionState? FontSizeTransitionState
+    {
+        get
+        {
+            Lock.EnterReadLock();
+            try
+            {
+                return fontSizeTransitionState;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+
+        set
+        {
+            Lock.EnterWriteLock();
+            try
+            {
+                fontSizeTransitionState = value;
+            }
+            finally
+            {
+                Lock.ExitWriteLock();
+            }
+        }
+    }
+
+    internal float CurrentFontSize
+    {
+        get
+        {
+            Lock.EnterReadLock();
+
+            try
+            {
+                if (fontSizeTransitionState is null)
+                    return fontSize;
+
+                return fontSizeTransitionState.CurrentValue;
+            }
+            finally
+            {
+                Lock.ExitReadLock();
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Gets the reader/writer lock used to synchronize access to this hint's fields.
+    /// </summary>
+    protected ReaderWriterLockSlim Lock { get; } = new(LockRecursionPolicy.SupportsRecursion);
+
+    #endregion
+
+    #region Methods
+
+    /// <summary>
+    ///     Attempts to update the hint content in response to an update-available event.
+    /// </summary>
+    /// <param name="ev">The event arguments containing the player display context.</param>
+    public virtual void TryUpdateHint(UpdateAvailableEventArg ev)
+    {
+        Content.TryUpdate(new ContentUpdateArg(this, ev.PlayerDisplay));
+    }
+
+    internal void CopyFieldsFrom(AbstractHint copyFrom)
+    {
+        id = copyFrom.Id;
+        syncSpeed = copyFrom.SyncSpeed;
+        fontSize = copyFrom.FontSize;
+        lineHeight = copyFrom.LineHeight;
+        content = copyFrom.Content;
+        hide = copyFrom.Hide;
+        fontSizeTransition = copyFrom.FontSizeTransition;
+        fontSizeTransitionState = copyFrom.FontSizeTransitionState;
+        resolutionOption = copyFrom.ResolutionOption;
+        edgeMargin = copyFrom.EdgeMargin;
+        parameters = new ParameterCollection(copyFrom.Parameters);
+    }
+
+    internal void ResetFields()
+    {
+        id = string.Empty;
+        content = null!;
+    }
+
+    /// <summary>
+    ///     Raises the <see cref="PropertyChanged" /> event and notifies the update analyser of a change.
+    /// </summary>
+    /// <param name="argumentName">The name of the property that changed.</param>
+    protected virtual void OnHintUpdated(string argumentName)
+    {
+        analyser.OnUpdate();
+
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(argumentName));
+    }
+
+    private void OnContentUpdate()
+    {
+        OnHintUpdated(nameof(Content));
+    }
+
+    #endregion
 }

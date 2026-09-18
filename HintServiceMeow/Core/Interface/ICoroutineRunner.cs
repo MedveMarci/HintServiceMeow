@@ -1,12 +1,11 @@
-﻿namespace HintServiceMeow.Core.Interface
+using System;
+using System.Collections.Generic;
+
+namespace HintServiceMeow.Core.Interface;
+
+internal interface ICoroutineRunner
 {
-    using System;
-    using System.Collections.Generic;
+    ICoroutine StartCoroutine(IEnumerator<float> routine);
 
-    internal interface ICoroutineRunner
-    {
-        ICoroutine StartCoroutine(IEnumerator<float> routine);
-
-        ICoroutine CallAfter(TimeSpan time, Action action);
-    }
+    ICoroutine CallAfter(TimeSpan time, Action action);
 }

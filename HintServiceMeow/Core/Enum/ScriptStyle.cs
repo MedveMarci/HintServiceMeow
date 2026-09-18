@@ -1,8 +1,7 @@
-﻿namespace HintServiceMeow.Core.Enum
+namespace HintServiceMeow.Core.Enum;
+
+internal enum ScriptStyle
 {
-    internal enum ScriptStyle
-    {
-        Subscript,
-        Superscript,
-    }
+    Subscript,
+    Superscript
 }

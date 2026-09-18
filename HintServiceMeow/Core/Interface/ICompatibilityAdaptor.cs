@@ -1,16 +1,16 @@
-﻿namespace HintServiceMeow.Core.Interface
-{
-    using HintServiceMeow.Core.Models.Arguments;
+﻿using System;
+using HintServiceMeow.Core.Models.Arguments;
 
+namespace HintServiceMeow.Core.Interface;
+
+/// <summary>
+///     Defines an adaptor that adapt other hints into HSM through a compatibility layer.
+/// </summary>
+public interface ICompatibilityAdaptor : IDisposable
+{
     /// <summary>
-    /// Defines an adaptor that adapt other hints into HSM through a compatibility layer.
+    ///     Adapt a hint into HSM using the provided compatibility adaptor arguments.
     /// </summary>
-    public interface ICompatibilityAdaptor
-    {
-        /// <summary>
-        /// Adapt a hint into HSM using the provided compatibility adaptor arguments.
-        /// </summary>
-        /// <param name="ev">The arguments containing hint display data.</param>
-        void ShowHint(CompatibilityAdaptorArg ev);
-    }
+    /// <param name="ev">The arguments containing hint display data.</param>
+    void ShowHint(CompatibilityAdaptorArg ev);
 }

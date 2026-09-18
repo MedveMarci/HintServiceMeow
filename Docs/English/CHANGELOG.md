@@ -8,7 +8,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [Unreleased]
+## [6.0.0]
+### Added
+#### Transition
+- Animation and hint parameter support in `Hint` and `DynamicHint`. 
+- `AbstractHint::FontSizeTransition`, `Hint::XCoordianteTransition`, `Hint::YCoordianteTransition`, `DynamicHint::XCoordianteTransition`, `DynamicHint::YCoordianteTransition`.
+- `Transition` and `TransitionState` classes
+#### Hint Config and Template
+- Config and templates for `Hint` and `DynamicHint`. Config can be used for YAML serialization, while template can be used to quickly replicate hints with same properties.
+- `AbstractHintTemplate`, `DynamicHintConfig`, `DynamicHintPositionConfig`, `DynamicHintTempalte`, `HintConfig`, `HintPositionConfig`, and `HintTemplate` Classes.
+#### More extensions
+- Added comprehensive extension methods for Player classes of both Exiled and LabAPI.
+- Added AddHint overloads to support adding multiple hints simultaneously via IEnumerable or params arrays.
+- Added hint retrieval (GetHint, TryGetHint, GetHints), removal(RemoveHint, RemoveHints), and limited-time showing(ShowHint, ShowHints) player extension method.
+- Added CommonHint(Item hint, map hint, role hint, and other hint) player extension methods.
+#### Rich Tag Helper
+- Added `RichTag` class and extension methods to help with building unity rich text.
+- Added extensino for `string` and `StringBuilder` for more convenient rich text writing experience.
+- Added / operator to apply a tag to a `string` instance.
+#### Resolution Adaption
+- Added adaption to different screen size.
+- Added `AbstractHint::ResolutionOption`.
+
+### Changed
+#### Better RichTextParser
+- Rewrote RichTextParser to increase compatibility with tags.
+- Added `LineStyle`, `TextMeshStyle`, `TextSegmentStyle`, `Color`, `MeasuredValue`, `LineInfo`, `TextSegment`, `Token`, `RichTextParserResult`, `RichTextParserSetting`,  model classes.
+- Addeed `TagChecker`, `Tokenizer` utility classes.
+- Rewrote `RichTextParser`.
+
+#### Better CommonHint
+- Removed redundant API.
+- Add auto expand.
+
+#### Minor Changes
+- `AbstractHint::LineHeight` can be negative.
+- Replaced return type of `PlayerDisplay::GetHints` with `AbstractHint[]`. Use `float maxDelay` as the parameter of `PlayerDisplay::ForceUpdate`.
 
 ---
 

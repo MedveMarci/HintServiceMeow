@@ -1,34 +1,33 @@
-﻿namespace HintServiceMeow.Core.Utilities.UnityAdaptors
+using HintServiceMeow.Core.Interface;
+using MEC;
+
+namespace HintServiceMeow.Core.Utilities.UnityAdaptors;
+
+internal class UnityCoroutine : ICoroutine
 {
-    using HintServiceMeow.Core.Interface;
-    using MEC;
+    private readonly CoroutineHandle handle;
 
-    internal class UnityCoroutine : ICoroutine
+    public bool IsRunning => handle.IsRunning;
+
+    public bool IsPaused => handle.IsAliveAndPaused;
+
+    internal UnityCoroutine(CoroutineHandle handle)
     {
-        private readonly CoroutineHandle handle;
+        this.handle = handle;
+    }
 
-        internal UnityCoroutine(CoroutineHandle handle)
-        {
-            this.handle = handle;
-        }
+    public void Kill()
+    {
+        Timing.KillCoroutines(handle);
+    }
 
-        public bool IsRunning => handle.IsRunning;
+    public void Pause()
+    {
+        Timing.PauseCoroutines(handle);
+    }
 
-        public bool IsPaused => handle.IsAliveAndPaused;
-
-        public void Kill()
-        {
-            Timing.KillCoroutines(handle);
-        }
-
-        public void Pause()
-        {
-            Timing.PauseCoroutines(handle);
-        }
-
-        public void Resume()
-        {
-            Timing.ResumeCoroutines(handle);
-        }
+    public void Resume()
+    {
+        Timing.ResumeCoroutines(handle);
     }
 }

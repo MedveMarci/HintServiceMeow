@@ -1,119 +1,107 @@
-﻿namespace HintServiceMeow.Core.Utilities
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using HintServiceMeow.Core.Utilities.Tools;
+
+namespace HintServiceMeow.Core.Utilities;
+
+internal class PeriodicRunner : IDisposable
 {
-    using System;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using HintServiceMeow.Core.Utilities.Tools;
+    private readonly CancellationTokenSource cts = new();
+    private readonly TimeSpan interval;
+    private readonly Func<Task> actionAsync;
+    private readonly object pauseLock = new();
 
-    internal class PeriodicRunner : IDisposable
+    private bool paused;
+
+    public Task CurrentTask { get; }
+
+    private PeriodicRunner(Func<Task> actionAsync, TimeSpan interval, bool runImmediately = false)
     {
-        private readonly CancellationTokenSource cts = new();
-        private readonly TimeSpan interval;
-        private readonly Func<Task> actionAsync;
-        private readonly Task loopTask;
-        private readonly object pauseLock = new();
+        this.actionAsync = actionAsync ?? throw new ArgumentNullException(nameof(actionAsync));
+        this.interval = interval >= TimeSpan.Zero ? interval : throw new ArgumentOutOfRangeException(nameof(interval));
+        CurrentTask = RunLoopAsync(runImmediately, cts.Token);
+    }
 
-        private bool paused;
+    public static PeriodicRunner Start(Func<Task> actionAsync, TimeSpan interval, bool runImmediately = false)
+    {
+        return new PeriodicRunner(actionAsync, interval, runImmediately);
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="PeriodicRunner"/> class.
-        /// Create a runner that executes an action periodically.
-        /// </summary>
-        /// <param name="actionAsync">The action that runs periodically.</param>
-        /// <param name="interval">The minimum interval between each action.</param>
-        /// <param name="runImmediately">Whether to run immediately after this call.</param>
-        private PeriodicRunner(Func<Task> actionAsync, TimeSpan interval, bool runImmediately = false)
+    public void Pause()
+    {
+        lock (pauseLock)
         {
-            this.actionAsync = actionAsync ?? throw new ArgumentNullException(nameof(actionAsync));
-            this.interval = interval >= TimeSpan.Zero ? interval : throw new ArgumentOutOfRangeException(nameof(interval));
-            loopTask = RunLoopAsync(runImmediately, cts.Token);
+            paused = true;
         }
+    }
 
-        /// <summary>
-        /// Gets the current task that runs the periodic action.
-        /// </summary>
-        public Task CurrentTask => loopTask;
-
-        public static PeriodicRunner Start(
-            Func<Task> actionAsync,
-            TimeSpan interval,
-            bool runImmediately = false)
-            => new(actionAsync, interval, runImmediately);
-
-        public void Pause()
+    public void Resume()
+    {
+        lock (pauseLock)
         {
-            lock (pauseLock)
+            paused = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        cts.Cancel();
+        cts.Dispose();
+    }
+
+    private async Task RunLoopAsync(bool runImmediately, CancellationToken token)
+    {
+        try
+        {
+            if (runImmediately)
+                await InvokeActionSafeAsync(token).ConfigureAwait(false);
+
+            DateTime nextDue = DateTime.UtcNow + interval;
+
+            while (!token.IsCancellationRequested)
             {
-                paused = true;
-            }
-        }
+                TimeSpan delay = nextDue - DateTime.UtcNow;
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, token).ConfigureAwait(false);
 
-        public void Resume()
-        {
-            lock (pauseLock)
-            {
-                paused = false;
-            }
-        }
-
-        public void Dispose()
-        {
-            cts.Cancel();
-            cts.Dispose();
-        }
-
-        private async Task RunLoopAsync(bool runImmediately, CancellationToken token)
-        {
-            try
-            {
-                if (runImmediately)
-                    await InvokeActionSafeAsync(token).ConfigureAwait(false);
-
-                DateTime nextDue = DateTime.UtcNow + interval;
-
-                while (!token.IsCancellationRequested)
+                if (!IsPaused())
                 {
-                    TimeSpan delay = nextDue - DateTime.UtcNow;
-                    if (delay > TimeSpan.Zero)
-                        await Task.Delay(delay, token).ConfigureAwait(false);
-
-                    if (!IsPaused())
-                    {
-                        await InvokeActionSafeAsync(token).ConfigureAwait(false);
-                        nextDue = DateTime.UtcNow + interval;
-                    }
-                    else
-                    {
-                        // Paused
-                        await Task.Delay(interval, token).ConfigureAwait(false);
-                    }
+                    await InvokeActionSafeAsync(token).ConfigureAwait(false);
+                    nextDue = DateTime.UtcNow + interval;
+                }
+                else
+                {
+                    // Paused
+                    await Task.Delay(interval, token).ConfigureAwait(false);
                 }
             }
-            catch (TaskCanceledException)
-            {
-            } // Action cancelled
         }
+        catch (TaskCanceledException)
+        { } // Action cancelled
+    }
 
-        private bool IsPaused()
+    private bool IsPaused()
+    {
+        lock (pauseLock)
         {
-            lock (pauseLock)
-                return paused;
+            return paused;
         }
+    }
 
-        private async Task InvokeActionSafeAsync(CancellationToken token)
+    private async Task InvokeActionSafeAsync(CancellationToken token)
+    {
+        try
         {
-            try
-            {
-                await actionAsync().ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
-            {
-                // Cancellation requested, do nothing
-            }
-            catch (Exception ex)
-            {
-                Logger.Instance.Error($"Error in periodic action: {ex.Message}");
-            }
+            await actionAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            // Cancellation requested, do nothing
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Error($"Error in periodic action: {ex.Message}");
         }
     }
 }

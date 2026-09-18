@@ -1,16 +1,13 @@
 ﻿using System;
 using HintServiceMeow.Core.Models.Hints;
 
-internal readonly struct HintSortData : IComparable<HintSortData>
+internal readonly struct HintSortData(Hint hint, float y) : IComparable<HintSortData>
 {
-    public readonly Hint Hint;
-    public readonly float Y;
+    public readonly Hint Hint = hint;
+    public readonly float Y = y;
 
-    public HintSortData(Hint hint, float y)
+    public int CompareTo(HintSortData other)
     {
-        Hint = hint;
-        Y = y;
+        return Y.CompareTo(other.Y);
     }
-
-    public int CompareTo(HintSortData other) => Y.CompareTo(other.Y);
 }

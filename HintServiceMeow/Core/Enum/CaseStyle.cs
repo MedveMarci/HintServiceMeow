@@ -1,28 +1,24 @@
-﻿namespace HintServiceMeow.Core.Enum
+﻿namespace HintServiceMeow.Core.Enum;
+
+public enum CaseStyle
 {
     /// <summary>
-    /// Specifies the text case style applied to hint content.
+    ///     Displays all characters as uppercase using the allcaps style.
     /// </summary>
-    public enum CaseStyle
-    {
-        /// <summary>
-        /// Displays all characters as uppercase using the allcaps style.
-        /// </summary>
-        Allcaps,
+    Allcaps,
 
-        /// <summary>
-        /// Displays all characters in lowercase.
-        /// </summary>
-        Lowercase,
+    /// <summary>
+    ///     Displays all characters in lowercase.
+    /// </summary>
+    Lowercase,
 
-        /// <summary>
-        /// Displays lowercase letters as smaller uppercase letters (small capitals).
-        /// </summary>
-        Smallcaps,
+    /// <summary>
+    ///     Displays lowercase letters as smaller uppercase letters (small capitals).
+    /// </summary>
+    Smallcaps,
 
-        /// <summary>
-        /// Converts all characters to uppercase.
-        /// </summary>
-        Uppercase,
-    }
+    /// <summary>
+    ///     Converts all characters to uppercase.
+    /// </summary>
+    Uppercase
 }
