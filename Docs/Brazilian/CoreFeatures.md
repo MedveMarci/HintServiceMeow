@@ -761,6 +761,7 @@ A Adaptação de Resolução ajusta automaticamente o posicionamento das hints c
 | Propriedade | Tipo | Descrição |
 |-------------|------|-----------|
 | ResolutionOption | `ResolutionOption` | Controla como a hint se adapta a diferentes resoluções de tela. Padrão: `Offset` |
+| EdgeMargin | `float` | Quão longe, em unidades, uma hint alinhada à esquerda/direita é mantida da borda da tela quando `ResolutionOption` é `Offset`. `0` (padrão) envia a hint até a borda; um valor positivo a recua para dentro. |
 
 Quando definido como `Offset`, o sistema monitora a resolução de tela de cada jogador e ajusta o `XCoordinate` das hints alinhadas à esquerda/direita para que apareçam consistentemente na borda da tela, independentemente da proporção.
 
@@ -774,6 +775,15 @@ var hint = new Hint
     Alignment = HintAlignment.Left,
     YCoordinate = 400,
     // ResolutionOption = ResolutionOption.Offset  // Este já é o padrão
+};
+
+// Mantenha a hint um pouco afastada da borda, em vez de rente a ela
+var insetHint = new Hint
+{
+    Text = "Não exatamente na borda",
+    Alignment = HintAlignment.Right,
+    YCoordinate = 400,
+    EdgeMargin = 20
 };
 
 // Desabilite a adaptação de resolução se quiser posicionamento fixo

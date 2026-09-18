@@ -761,6 +761,7 @@ string quick = "Quick" / ColorTag.Blue / BoldTag.Bold;
 | 属性 | 类型 | 描述 |
 |------|------|------|
 | ResolutionOption | `ResolutionOption` | 控制提示如何适配不同的屏幕分辨率。默认值：`Offset` |
+| EdgeMargin | `float` | 当 `ResolutionOption` 为 `Offset` 时，左/右对齐提示与屏幕边缘保持的距离（单位）。`0`（默认值）会让提示紧贴边缘；正值会使其向内收进。 |
 
 当设置为 `Offset` 时，系统会监控每个玩家的屏幕分辨率，并调整左/右对齐提示的 `XCoordinate`，使其无论宽高比如何都能一致地显示在屏幕边缘。
 
@@ -774,6 +775,15 @@ var hint = new Hint
     Alignment = HintAlignment.Left,
     YCoordinate = 400,
     // ResolutionOption = ResolutionOption.Offset  // 这已经是默认值
+};
+
+// 让提示与边缘保持一点距离，而不是紧贴边缘
+var insetHint = new Hint
+{
+    Text = "不完全贴边",
+    Alignment = HintAlignment.Right,
+    YCoordinate = 400,
+    EdgeMargin = 20
 };
 
 // 如需固定定位，禁用分辨率适配

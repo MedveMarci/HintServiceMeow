@@ -33,6 +33,7 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 #### Adaptação de Resolução
 - Adicionada adaptação para diferentes tamanhos de tela.
 - Adicionado `AbstractHint::ResolutionOption`.
+- Adicionado `AbstractHint::EdgeMargin` para manter hints alinhadas à esquerda/direita a uma distância configurável da borda da tela, em vez de rente a ela.
 
 ### Alterado
 #### RichTextParser Melhorado
@@ -45,9 +46,40 @@ O formato é baseado em [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 - Removida API redundante.
 - Adicionada expansão automática.
 
+#### Performance
+- Adicionado cache dos resultados do rich text parser, para que hints inalteradas sejam servidas do cache em vez de totalmente reanalisadas a cada ciclo de atualização.
+- Reduzida a sobrecarga por caractere em `FontTool`, `Tokenizer` e `RichTextParser::HandleText` no caminho crítico de análise.
+- Reduzida a sobrecarga de polling do `TaskScheduler`, substituindo múltiplas leituras de propriedades com lock por uma única leitura de snapshot.
+- Reduzidas as alocações por atualização em `PlayerDisplay` e corrigida uma condição de corrida na iteração dos display outputs, usando um snapshot imutável.
+- Envios de hint pela rede são ignorados quando o conteúdo renderizado não mudou (hints com parâmetros de animação/hint são sempre enviadas).
+- O cálculo da área de colisão de Dynamic Hints é ignorado quando não há nenhuma Dynamic Hint visível.
+- Strings de log de depuração no caminho crítico agora só são construídas quando o log de depuração está habilitado.
+
+#### Dependências
+- Atualizado `Northwood.LabAPI` para a versão `1.1.7`.
+
 #### Alterações Menores
 - `AbstractHint::LineHeight` pode ser negativo.
 - Substituído o tipo de retorno de `PlayerDisplay::GetHints` por `AbstractHint[]`. Uso de `float maxDelay` como parâmetro de `PlayerDisplay::ForceUpdate`.
+
+### Corrigido
+#### Adaptador de Compatibilidade
+- Corrigido problema em que hints de compatibilidade não resolviam os parâmetros `{0}`, `{1}`, ...
+- Corrigido problema em que hints de compatibilidade eram atribuídas à LabAPI/ao jogo base em vez do plugin que realmente as enviou, o que impedia `DisabledCompatAssemblies` de mirar plugins individuais.
+- Corrigido problema em que efeitos de hint (fade, pulso) de uma hint de compatibilidade vazavam para o conteúdo de outros plugins que compartilham a mesma hint renderizada; esses efeitos agora são descartados em vez de aplicados.
+- Corrigido travamento ao remover uma hint de compatibilidade enviada com duração infinita ou inválida (NaN).
+- Corrigido problema em que linhas de hint de compatibilidade largas demais se sobrepunham em vez de quebrar nos limites das palavras.
+- Corrigido problema em que hints de compatibilidade com múltiplas linhas eram renderizadas sem espaçamento natural entre linhas.
+- Corrigido problema em que hints de compatibilidade usavam o tamanho de fonte errado quando nenhuma tag de tamanho explícita estava presente.
+- Corrigido problema em que hints de compatibilidade eram deslocadas pelo offset de borda da resolução de tela; agora elas usam `ResolutionOption.None`.
+
+#### Renderização
+- Corrigido problema em que hints alinhadas à direita não alcançavam a borda real da tela sob `ResolutionOption.Offset` (antes elas só alcançavam a borda fixa do canvas, diferente das hints alinhadas à esquerda).
+- Corrigido problema em que valores relativos de `<size>` (porcentagem/em) eram medidos com base no tamanho de fonte da própria hint em vez de uma referência fixa, o que podia comprimir o espaçamento entre linhas.
+- Corrigido problema em que linhas em branco colapsavam para altura zero em vez de usar o tamanho de fonte atual.
+
+#### Estabilidade
+- Corrigido `TaskScheduler` lançando `ObjectDisposedException` quando uma tarefa de análise era concluída após o `PlayerDisplay` já ter sido descartado.
 
 ---
 

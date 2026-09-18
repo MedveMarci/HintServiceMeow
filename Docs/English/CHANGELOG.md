@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Config and templates for `Hint` and `DynamicHint`. Config can be used for YAML serialization, while template can be used to quickly replicate hints with same properties.
 - `AbstractHintTemplate`, `DynamicHintConfig`, `DynamicHintPositionConfig`, `DynamicHintTempalte`, `HintConfig`, `HintPositionConfig`, and `HintTemplate` Classes.
 #### More extensions
-- Added comprehensive extension methods for Player classes.
+- Added comprehensive extension methods for Player class.
 - Added AddHint overloads to support adding multiple hints simultaneously via IEnumerable or params arrays.
 - Added hint retrieval (GetHint, TryGetHint, GetHints), removal(RemoveHint, RemoveHints), and limited-time showing(ShowHint, ShowHints) player extension method.
 - Added CommonHint(Item hint, map hint, role hint, and other hint) player extension methods.
@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 #### Resolution Adaption
 - Added adaption to different screen size.
 - Added `AbstractHint::ResolutionOption`.
+- Added `AbstractHint::EdgeMargin` to keep left/right-aligned hints a configurable distance away from the screen edge instead of flush against it.
 
 ### Changed
 #### Better RichTextParser
@@ -41,9 +42,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Removed redundant API.
 - Add auto expand.
 
+#### Performance
+- Cached rich text parser results so unchanged hints are served from cache instead of being fully re-parsed on every update cycle.
+- Reduced per-character overhead in `FontTool`, `Tokenizer`, and `RichTextParser::HandleText` on the parsing hot path.
+- Reduced `TaskScheduler` polling overhead by replacing repeated locked property reads with a single snapshot per check.
+- Reduced per-update allocations in `PlayerDisplay` and fixed a display-output iteration race by using an immutable output snapshot.
+- Skipped redundant hint network sends when the rendered content is unchanged (hints carrying animation/hint parameters are always sent).
+- Skipped dynamic-hint collision-area computation when no dynamic hints are visible.
+
 #### Minor Changes
 - `AbstractHint::LineHeight` can be negative.
 - Replaced return type of `PlayerDisplay::GetHints` with `AbstractHint[]`. Use `float maxDelay` as the parameter of `PlayerDisplay::ForceUpdate`.
+
+### Fixed
+#### Compatibility Adaptor
+- Fixed compatibility hints not resolving `{0}`, `{1}`, ... parameters.
+- Fixed compatibility hints being attributed to LabAPI/the base game instead of the plugin that actually sent them, which made `DisabledCompatAssemblies` unable to target individual plugins.
+- Fixed hint effects (fades, pulses) on a compatibility hint bleeding into every other plugin's content sharing the same rendered hint; such effects are now dropped instead of applied.
+- Fixed compatibility hint removal crashing when the hint was sent with an endless or malformed (NaN) duration.
+- Fixed over-wide compatibility hint lines overlapping instead of wrapping at word boundaries.
+- Fixed multi-line compatibility hints rendering without natural line spacing.
+- Fixed compatibility hints using the wrong font size when no explicit size tag was present.
+- Fixed compatibility hints being shifted by the screen resolution edge offset; they now use `ResolutionOption.None`.
+
+#### Rendering
+- Fixed right-aligned hints not reaching the real screen edge under `ResolutionOption.Offset` (they previously only reached the fixed canvas edge, unlike left-aligned hints).
+- Fixed relative `<size>` values (percentage / em) being measured against the hint's own font size instead of a fixed reference, which could compress line spacing.
+- Fixed blank lines collapsing to zero height instead of using the current font size.
+
+#### Stability
+- Fixed `TaskScheduler` throwing `ObjectDisposedException` when a parser task completed after `PlayerDisplay` was already disposed.
 
 ---
 

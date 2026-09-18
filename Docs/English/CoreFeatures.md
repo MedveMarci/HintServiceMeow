@@ -761,6 +761,7 @@ Resolution Adaption automatically adjusts hint positioning based on the player's
 | Property | Type | Description |
 |----------|------|-------------|
 | ResolutionOption | `ResolutionOption` | Controls how the hint adapts to different screen resolutions. Default: `Offset` |
+| EdgeMargin | `float` | How far, in units, a left/right-aligned hint is kept away from the screen edge when `ResolutionOption` is `Offset`. `0` (default) sends the hint all the way to the edge; a positive value insets it inward. |
 
 When set to `Offset`, the system monitors each player's screen resolution and adjusts the `XCoordinate` of left/right-aligned hints so they appear consistently at the screen edge regardless of aspect ratio.
 
@@ -774,6 +775,15 @@ var hint = new Hint
     Alignment = HintAlignment.Left,
     YCoordinate = 400,
     // ResolutionOption = ResolutionOption.Offset  // This is already the default
+};
+
+// Keep the hint a bit away from the edge instead of flush against it
+var insetHint = new Hint
+{
+    Text = "Not quite at the edge",
+    Alignment = HintAlignment.Right,
+    YCoordinate = 400,
+    EdgeMargin = 20
 };
 
 // Disable resolution adaption if you want fixed positioning
