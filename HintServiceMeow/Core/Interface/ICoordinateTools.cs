@@ -28,6 +28,8 @@ internal interface ICoordinateTools
 
     float GetXCoordinateWithAlignment(Hint hint, HintAlignment alignment);
 
+    float GetXCoordinateWithAlignment(float xCoordinate, float textWidth, HintAlignment alignment);
+
     float GetTextWidth(AbstractHint hint);
 
     float GetTextWidth(string text, float fontSize, HintAlignment align = HintAlignment.Center);

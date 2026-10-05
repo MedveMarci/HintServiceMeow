@@ -1,13 +1,12 @@
 using System;
 using System.ComponentModel;
-using System.Threading;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Enum;
 using HintServiceMeow.Core.Interface;
 using HintServiceMeow.Core.Models.Arguments;
 using HintServiceMeow.Core.Models.HintContent;
 using HintServiceMeow.Core.Models.Transition;
 using HintServiceMeow.Core.Utilities;
-using HintServiceMeow.Core.Utilities.Tools;
 
 namespace HintServiceMeow.Core.Models.Hints;
 
@@ -17,25 +16,16 @@ namespace HintServiceMeow.Core.Models.Hints;
 /// </summary>
 public abstract class AbstractHint : INotifyPropertyChanged
 {
-    private readonly Guid guid = Guid.NewGuid();
-
-    private IUpdateAnalyser analyser = new UpdateAnalyzer();
-
-    private string id = string.Empty;
-
     private HintSyncSpeed syncSpeed = HintSyncSpeed.Normal;
 
     private float fontSize = 20f;
     private Transition.Transition? fontSizeTransition;
-    private TransitionState? fontSizeTransitionState;
 
     private float lineHeight;
 
     private AbstractHintContent content = new StringContent(string.Empty);
 
     private bool hide;
-
-    private ParameterCollection parameters = new();
 
     private ResolutionOption resolutionOption = ResolutionOption.Offset;
 
@@ -64,21 +54,13 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// <param name="hint">The hint whose properties are copied into this instance.</param>
     protected AbstractHint(AbstractHint hint)
     {
-        Lock.EnterWriteLock();
-        try
-        {
-            id = hint.id;
-            syncSpeed = hint.syncSpeed;
-            fontSize = hint.fontSize;
-            lineHeight = hint.lineHeight;
-            content = hint.content;
-            hide = hint.hide;
-            edgeMargin = hint.edgeMargin;
-        }
-        finally
-        {
-            Lock.ExitWriteLock();
-        }
+        Id = hint.Id;
+        syncSpeed = hint.syncSpeed;
+        fontSize = hint.fontSize;
+        lineHeight = hint.lineHeight;
+        content = hint.content;
+        hide = hint.hide;
+        edgeMargin = hint.edgeMargin;
     }
 
     #endregion
@@ -88,118 +70,31 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// <summary>
     ///     Gets or sets the update analyser used to track and estimate hint update timing.
     /// </summary>
-    public IUpdateAnalyser UpdateAnalyser
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return analyser;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
-
-        set
-        {
-            Lock.EnterWriteLock();
-            try
-            {
-                analyser = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
-        }
-    }
+    public IUpdateAnalyser UpdateAnalyser { get; set; } = new UpdateAnalyzer();
 
     /// <summary>
     ///     Gets the unique identifier for this hint instance.
     /// </summary>
-    public Guid Guid
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return guid;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
-    }
+    public Guid Guid { get; } = Guid.NewGuid();
 
     /// <summary>
     ///     Gets or sets the logical identifier used to group or retrieve this hint.
     /// </summary>
-    public string Id
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return id;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
-
-        set
-        {
-            Lock.EnterWriteLock();
-            try
-            {
-                id = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
-        }
-    }
+    public string Id { get; set; } = string.Empty;
 
     /// <summary>
     ///     Gets or sets the synchronization speed that controls how quickly this hint's updates are sent to the display.
     /// </summary>
     public HintSyncSpeed SyncSpeed
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return syncSpeed;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => syncSpeed;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (syncSpeed == value)
-                    return;
+            if (syncSpeed == value)
+                return;
 
-                syncSpeed = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            syncSpeed = value;
 
             OnHintUpdated(nameof(SyncSpeed));
         }
@@ -210,33 +105,14 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public float FontSize
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return fontSize;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => fontSize;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (fontSize == value)
-                    return;
+            if (fontSize == value)
+                return;
 
-                fontSize = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            fontSize = value;
 
             OnHintUpdated(nameof(FontSize));
         }
@@ -247,33 +123,14 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public Transition.Transition? FontSizeTransition
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return fontSizeTransition;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => fontSizeTransition;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (fontSizeTransition == value)
-                    return;
+            if (fontSizeTransition == value)
+                return;
 
-                fontSizeTransition = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            fontSizeTransition = value;
 
             OnHintUpdated(nameof(FontSizeTransition));
         }
@@ -284,33 +141,14 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public float LineHeight
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return lineHeight;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => lineHeight;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (lineHeight.Equals(value))
-                    return;
+            if (lineHeight.Equals(value))
+                return;
 
-                lineHeight = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            lineHeight = value;
 
             OnHintUpdated(nameof(LineHeight));
         }
@@ -321,36 +159,17 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public AbstractHintContent Content
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return content;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => content;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (content == value)
-                    return;
+            if (content == value)
+                return;
 
-                Content.ContentUpdated -= OnContentUpdate;
+            content.ContentUpdated -= OnContentUpdate;
 
-                content = value;
-                content.ContentUpdated += OnContentUpdate;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            content = value;
+            content.ContentUpdated += OnContentUpdate;
 
             OnHintUpdated(nameof(Content));
         }
@@ -364,42 +183,25 @@ public abstract class AbstractHint : INotifyPropertyChanged
     {
         get
         {
-            Lock.EnterReadLock();
-            try
-            {
-                if (Content is StringContent) return Content.GetText();
+            AbstractHintContent currentContent = content;
 
-                return null;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
+            return currentContent is StringContent ? currentContent.GetText() : null;
         }
 
         set
         {
-            Lock.EnterWriteLock();
             try
             {
-                if (Content is StringContent textContent)
-                {
+                if (content is StringContent textContent)
                     textContent.Text = value;
-                }
                 else
-                {
                     content.ContentUpdated -= OnContentUpdate;
-                    content = new StringContent(value);
-                    content.ContentUpdated += OnContentUpdate;
-                }
+                content = new StringContent(value);
+                content.ContentUpdated += OnContentUpdate;
             }
             catch (Exception ex)
             {
-                Logger.Instance.Error(ex);
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
+                LogManager.Error(ex.ToString());
             }
 
             OnHintUpdated(nameof(Text));
@@ -415,32 +217,16 @@ public abstract class AbstractHint : INotifyPropertyChanged
     {
         get
         {
-            Lock.EnterReadLock();
-            try
-            {
-                if (Content is AutoContent autoContent) return autoContent.AutoText;
+            if (content is AutoContent autoContent) return autoContent.AutoText;
 
-                return null;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
+            return null;
         }
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                content.ContentUpdated -= OnContentUpdate;
-                content = new AutoContent(value);
-                content.ContentUpdated += OnContentUpdate;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            content.ContentUpdated -= OnContentUpdate;
+            content = new AutoContent(value);
+            content.ContentUpdated += OnContentUpdate;
 
             OnHintUpdated(nameof(AutoText));
         }
@@ -451,33 +237,14 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public bool Hide
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return hide;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => hide;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (hide == value)
-                    return;
+            if (hide == value)
+                return;
 
-                hide = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            hide = value;
 
             OnHintUpdated(nameof(Hide));
         }
@@ -488,32 +255,13 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public ResolutionOption ResolutionOption
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return resolutionOption;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => resolutionOption;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (resolutionOption == value)
-                    return;
-                resolutionOption = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            if (resolutionOption == value)
+                return;
+            resolutionOption = value;
 
             OnHintUpdated(nameof(ResolutionOption));
         }
@@ -527,106 +275,34 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// </summary>
     public float EdgeMargin
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return edgeMargin;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => edgeMargin;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (edgeMargin == value)
-                    return;
-                edgeMargin = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            if (edgeMargin == value)
+                return;
+            edgeMargin = value;
 
             OnHintUpdated(nameof(EdgeMargin));
         }
     }
 
-    public ParameterCollection Parameters
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return parameters;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
-    }
+    public ParameterCollection Parameters { get; private set; } = new();
 
-    internal TransitionState? FontSizeTransitionState
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return fontSizeTransitionState;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
-
-        set
-        {
-            Lock.EnterWriteLock();
-            try
-            {
-                fontSizeTransitionState = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
-        }
-    }
+    internal TransitionState? FontSizeTransitionState { get; set; }
 
     internal float CurrentFontSize
     {
         get
         {
-            Lock.EnterReadLock();
+            TransitionState? transitionState = FontSizeTransitionState;
 
-            try
-            {
-                if (fontSizeTransitionState is null)
-                    return fontSize;
+            if (transitionState is null)
+                return fontSize;
 
-                return fontSizeTransitionState.CurrentValue;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
+            return transitionState.CurrentValue;
         }
     }
-
-    /// <summary>
-    ///     Gets the reader/writer lock used to synchronize access to this hint's fields.
-    /// </summary>
-    protected ReaderWriterLockSlim Lock { get; } = new(LockRecursionPolicy.SupportsRecursion);
 
     #endregion
 
@@ -643,23 +319,17 @@ public abstract class AbstractHint : INotifyPropertyChanged
 
     internal void CopyFieldsFrom(AbstractHint copyFrom)
     {
-        id = copyFrom.Id;
+        Id = copyFrom.Id;
         syncSpeed = copyFrom.SyncSpeed;
         fontSize = copyFrom.FontSize;
         lineHeight = copyFrom.LineHeight;
         content = copyFrom.Content;
         hide = copyFrom.Hide;
         fontSizeTransition = copyFrom.FontSizeTransition;
-        fontSizeTransitionState = copyFrom.FontSizeTransitionState;
+        FontSizeTransitionState = copyFrom.FontSizeTransitionState;
         resolutionOption = copyFrom.ResolutionOption;
         edgeMargin = copyFrom.EdgeMargin;
-        parameters = new ParameterCollection(copyFrom.Parameters);
-    }
-
-    internal void ResetFields()
-    {
-        id = string.Empty;
-        content = null!;
+        Parameters = copyFrom.Parameters;
     }
 
     /// <summary>
@@ -668,7 +338,7 @@ public abstract class AbstractHint : INotifyPropertyChanged
     /// <param name="argumentName">The name of the property that changed.</param>
     protected virtual void OnHintUpdated(string argumentName)
     {
-        analyser.OnUpdate();
+        UpdateAnalyser.OnUpdate();
 
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(argumentName));
     }

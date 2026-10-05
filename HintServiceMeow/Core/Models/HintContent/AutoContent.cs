@@ -1,6 +1,6 @@
 using System;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Models.Arguments;
-using HintServiceMeow.Core.Utilities.Tools;
 
 namespace HintServiceMeow.Core.Models.HintContent;
 
@@ -82,7 +82,7 @@ public class AutoContent : AbstractHintContent
         catch (Exception ex)
         {
             newText = string.Empty;
-            Logger.Instance.Error(ex);
+            LogManager.Error(ex.ToString());
         }
 
         if (text != newText)

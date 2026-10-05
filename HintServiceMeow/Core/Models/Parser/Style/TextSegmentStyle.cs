@@ -18,7 +18,7 @@ internal class TextSegmentStyle(float fontSize, Color color, float? alpha, bool 
         return totalWidthWithFontSize;
     }
 
-    public float GetHeight() 
+    public float GetHeight()
     {
         float height = FontSize;
         height *= (float)Math.Pow(0.5, Superscript + Subscript);

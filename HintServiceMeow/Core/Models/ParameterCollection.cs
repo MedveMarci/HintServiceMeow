@@ -7,35 +7,29 @@ namespace HintServiceMeow.Core.Models;
 
 public class ParameterCollection : IEnumerable<Tuple<string, IParameter>>
 {
-    private readonly object collectionLock = new();
     private readonly List<Tuple<string, IParameter>> list = new(4);
+
+    internal int Version { get; private set; }
 
     public ParameterCollection()
     { }
 
     public ParameterCollection(ParameterCollection other)
     {
-        lock (other.collectionLock)
-        {
-            list.AddRange(other.list);
-        }
+        list.AddRange(other.list);
     }
 
     public void Add(string tagName, IParameter parameter)
     {
-        lock (collectionLock)
-        {
-            list.RemoveAll(x => x.Item1 == tagName);
-            list.Add(Tuple.Create(tagName, parameter));
-        }
+        list.RemoveAll(x => x.Item1 == tagName);
+        list.Add(Tuple.Create(tagName, parameter));
+        Version++;
     }
 
     public void RemoveAll(Predicate<Tuple<string, IParameter>> match)
     {
-        lock (collectionLock)
-        {
-            list.RemoveAll(match);
-        }
+        if (list.RemoveAll(match) > 0)
+            Version++;
     }
 
     public void RemoveParameter(string tagName)
@@ -50,25 +44,16 @@ public class ParameterCollection : IEnumerable<Tuple<string, IParameter>>
 
     public Tuple<string, IParameter>[] ToArray()
     {
-        lock (collectionLock)
-        {
-            return [.. list];
-        }
+        return [.. list];
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        lock (collectionLock)
-        {
-            return list.ToArray().GetEnumerator();
-        }
+        return list.ToArray().GetEnumerator();
     }
 
     IEnumerator<Tuple<string, IParameter>> IEnumerable<Tuple<string, IParameter>>.GetEnumerator()
     {
-        lock (collectionLock)
-        {
-            return ((IEnumerable<Tuple<string, IParameter>>)[.. list]).GetEnumerator();
-        }
+        return ((IEnumerable<Tuple<string, IParameter>>)[.. list]).GetEnumerator();
     }
 }

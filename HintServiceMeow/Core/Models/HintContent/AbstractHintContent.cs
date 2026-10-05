@@ -1,6 +1,6 @@
 using System;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Models.Arguments;
-using HintServiceMeow.Core.Utilities.Tools;
 
 namespace HintServiceMeow.Core.Models.HintContent;
 
@@ -30,7 +30,7 @@ public abstract class AbstractHintContent
         }
         catch (Exception ex)
         {
-            Logger.Instance.Error(ex);
+            LogManager.Error(ex.ToString());
         }
     }
 

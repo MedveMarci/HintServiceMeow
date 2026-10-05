@@ -146,15 +146,19 @@ internal class CoordinateTools(IPool<RichTextParser>? richTextParserPool = null)
 
     public float GetXCoordinateWithAlignment(Hint hint, HintAlignment alignment)
     {
-        float width = GetTextWidth(hint);
+        return GetXCoordinateWithAlignment(hint.XCoordinate, GetTextWidth(hint), alignment);
+    }
+
+    public float GetXCoordinateWithAlignment(float xCoordinate, float textWidth, HintAlignment alignment)
+    {
         float alignOffset = alignment switch
         {
-            HintAlignment.Left => -CanvasHalfWidth + width / 2,
-            HintAlignment.Right => CanvasHalfWidth - width / 2,
+            HintAlignment.Left => -CanvasHalfWidth + textWidth / 2,
+            HintAlignment.Right => CanvasHalfWidth - textWidth / 2,
             _ => 0
         };
 
-        return hint.XCoordinate + alignOffset;
+        return xCoordinate + alignOffset;
     }
 
     public float GetTextWidth(AbstractHint hint)

@@ -1,4 +1,3 @@
-using System;
 using HintServiceMeow.Core.Interface;
 
 namespace HintServiceMeow.Core.Models.Arguments;

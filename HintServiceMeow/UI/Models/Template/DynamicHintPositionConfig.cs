@@ -21,13 +21,13 @@ public class DynamicHintPositionConfig
     ///     Maps to <see cref="DynamicHint.RightBoundary" />.
     /// </summary>
     public float? RightBoundary { get; set; }
-    
+
     /// <summary>Gets or sets the preferred X coordinate. Maps to <see cref="DynamicHint.TargetX" />.</summary>
     public float? TargetX { get; set; }
 
     /// <summary>Gets or sets the preferred Y coordinate. Maps to <see cref="DynamicHint.TargetY" />.</summary>
     public float? TargetY { get; set; }
-    
+
     /// <summary>Gets or sets the spacing above this hint. Maps to <see cref="DynamicHint.TopMargin" />.</summary>
     public float? TopMargin { get; set; }
 
@@ -39,7 +39,7 @@ public class DynamicHintPositionConfig
 
     /// <summary>Gets or sets the right spacing during horizontal positioning. Maps to <see cref="DynamicHint.RightMargin" />.</summary>
     public float? RightMargin { get; set; }
-    
+
     /// <summary>Applies all non-null layout properties to <paramref name="dynamicHint" />.</summary>
     /// <param name="dynamicHint">The hint to apply these properties to.</param>
     public virtual void Apply(DynamicHint dynamicHint)

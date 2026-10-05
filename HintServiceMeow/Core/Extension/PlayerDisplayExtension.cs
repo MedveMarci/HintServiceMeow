@@ -1,9 +1,9 @@
 using System;
 using System.Runtime.CompilerServices;
-using System.Threading;
-using System.Threading.Tasks;
+using HintServiceMeow.Core.Interface;
 using HintServiceMeow.Core.Models.Hints;
 using HintServiceMeow.Core.Utilities;
+using HintServiceMeow.Core.Utilities.UnityAdaptors;
 
 namespace HintServiceMeow.Core.Extension;
 
@@ -12,9 +12,9 @@ namespace HintServiceMeow.Core.Extension;
 /// </summary>
 public static class PlayerDisplayExtension
 {
-    private static readonly object DictLock = new();
+    private static readonly ConditionalWeakTable<PlayerDisplay, ConditionalWeakTable<AbstractHint, ICoroutine>> RemoveTimers = new();
 
-    private static readonly ConditionalWeakTable<PlayerDisplay, ConditionalWeakTable<AbstractHint, CancellationTokenSource>> RemoveTimers = new();
+    internal static ICoroutineRunner CoroutineRunner { get; set; } = new UnityCoroutineRunner();
 
     /// <summary>
     ///     Remove a hint after a delay. If a removal task is in progress, it will be reset.
@@ -24,50 +24,23 @@ public static class PlayerDisplayExtension
     /// <param name="delay">How long until the hint is removed.</param>
     public static void RemoveAfter(this PlayerDisplay playerDisplay, AbstractHint hint, float delay)
     {
-        lock (DictLock)
+        if (!RemoveTimers.TryGetValue(playerDisplay, out ConditionalWeakTable<AbstractHint, ICoroutine> hintTimers))
         {
-            if (!RemoveTimers.TryGetValue(playerDisplay, out ConditionalWeakTable<AbstractHint, CancellationTokenSource> hintDict))
-            {
-                hintDict = new ConditionalWeakTable<AbstractHint, CancellationTokenSource>();
+            hintTimers = new ConditionalWeakTable<AbstractHint, ICoroutine>();
 
-                RemoveTimers.Add(playerDisplay, hintDict);
-            }
-
-            if (hintDict.TryGetValue(hint, out CancellationTokenSource oldToke))
-            {
-                oldToke.Cancel();
-                oldToke.Dispose();
-                hintDict.Remove(hint);
-            }
-
-            CancellationTokenSource cts = new();
-            hintDict.Add(hint, cts);
-
-            _ = RemoveAfterAsync(playerDisplay, hint, delay, cts.Token);
+            RemoveTimers.Add(playerDisplay, hintTimers);
         }
-    }
 
-    private static async Task RemoveAfterAsync(PlayerDisplay pd, AbstractHint hint, float delay, CancellationToken token)
-    {
-        try
+        if (hintTimers.TryGetValue(hint, out ICoroutine oldTimer))
         {
-            await Task.Delay(TimeSpan.FromSeconds(delay), token);
-            pd.InternalRemoveHint(null, hint);
+            oldTimer.Kill();
+            hintTimers.Remove(hint);
         }
-        catch (OperationCanceledException)
+
+        hintTimers.Add(hint, CoroutineRunner.CallAfter(TimeSpan.FromSeconds(delay), () =>
         {
-            // Task was cancelled, do nothing
-        }
-        finally
-        {
-            lock (DictLock)
-            {
-                if (RemoveTimers.TryGetValue(pd, out ConditionalWeakTable<AbstractHint, CancellationTokenSource> hintDict) && hintDict.TryGetValue(hint, out CancellationTokenSource current) && current.Token == token)
-                {
-                    current.Dispose();
-                    hintDict.Remove(hint);
-                }
-            }
-        }
+            hintTimers.Remove(hint);
+            playerDisplay.InternalRemoveHint(null, hint);
+        }));
     }
 }

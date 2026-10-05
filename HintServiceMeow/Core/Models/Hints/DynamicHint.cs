@@ -30,33 +30,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float TopBoundary
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return topBoundary;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => topBoundary;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (topBoundary.Equals(value))
-                    return;
+            if (topBoundary.Equals(value))
+                return;
 
-                topBoundary = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            topBoundary = value;
 
             OnHintUpdated(nameof(TopBoundary));
         }
@@ -67,33 +48,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float BottomBoundary
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return bottomBoundary;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => bottomBoundary;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (bottomBoundary.Equals(value))
-                    return;
+            if (bottomBoundary.Equals(value))
+                return;
 
-                bottomBoundary = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            bottomBoundary = value;
 
             OnHintUpdated(nameof(BottomBoundary));
         }
@@ -104,33 +66,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float LeftBoundary
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return leftBoundary;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => leftBoundary;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (leftBoundary.Equals(value))
-                    return;
+            if (leftBoundary.Equals(value))
+                return;
 
-                leftBoundary = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            leftBoundary = value;
 
             OnHintUpdated(nameof(LeftBoundary));
         }
@@ -141,33 +84,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float RightBoundary
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return rightBoundary;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => rightBoundary;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (rightBoundary.Equals(value))
-                    return;
+            if (rightBoundary.Equals(value))
+                return;
 
-                rightBoundary = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            rightBoundary = value;
 
             OnHintUpdated(nameof(RightBoundary));
         }
@@ -178,33 +102,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float TargetY
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return targetY;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => targetY;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (targetY.Equals(value))
-                    return;
+            if (targetY.Equals(value))
+                return;
 
-                targetY = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            targetY = value;
 
             OnHintUpdated(nameof(TargetY));
         }
@@ -215,33 +120,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float TargetX
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return targetX;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => targetX;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (targetX.Equals(value))
-                    return;
+            if (targetX.Equals(value))
+                return;
 
-                targetX = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            targetX = value;
 
             OnHintUpdated(nameof(TargetX));
         }
@@ -252,33 +138,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float TopMargin
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return topMargin;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => topMargin;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (topMargin.Equals(value))
-                    return;
+            if (topMargin.Equals(value))
+                return;
 
-                topMargin = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            topMargin = value;
 
             OnHintUpdated(nameof(TopMargin));
         }
@@ -289,33 +156,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float BottomMargin
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return bottomMargin;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => bottomMargin;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (bottomMargin.Equals(value))
-                    return;
+            if (bottomMargin.Equals(value))
+                return;
 
-                bottomMargin = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            bottomMargin = value;
 
             OnHintUpdated(nameof(BottomMargin));
         }
@@ -326,33 +174,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float LeftMargin
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return leftMargin;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => leftMargin;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (leftMargin.Equals(value))
-                    return;
+            if (leftMargin.Equals(value))
+                return;
 
-                leftMargin = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            leftMargin = value;
 
             OnHintUpdated(nameof(LeftMargin));
         }
@@ -363,33 +192,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public float RightMargin
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return rightMargin;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => rightMargin;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (rightMargin.Equals(value))
-                    return;
+            if (rightMargin.Equals(value))
+                return;
 
-                rightMargin = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            rightMargin = value;
 
             OnHintUpdated(nameof(RightMargin));
         }
@@ -400,33 +210,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public HintPriority Priority
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return priority;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => priority;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (priority == value)
-                    return;
+            if (priority == value)
+                return;
 
-                priority = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            priority = value;
 
             OnHintUpdated(nameof(Priority));
         }
@@ -437,33 +228,14 @@ public class DynamicHint : AbstractHint
     /// </summary>
     public DynamicHintStrategy Strategy
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return strategy;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => strategy;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (strategy == value)
-                    return;
+            if (strategy == value)
+                return;
 
-                strategy = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            strategy = value;
 
             OnHintUpdated(nameof(Strategy));
         }
@@ -484,32 +256,24 @@ public class DynamicHint : AbstractHint
     /// <param name="hint">The dynamic hint whose properties are copied into this instance.</param>
     public DynamicHint(DynamicHint hint) : base(hint)
     {
-        Lock.EnterWriteLock();
-        try
-        {
-            topBoundary = hint.topBoundary;
-            bottomBoundary = hint.bottomBoundary;
+        topBoundary = hint.topBoundary;
+        bottomBoundary = hint.bottomBoundary;
 
-            leftBoundary = hint.leftBoundary;
-            rightBoundary = hint.rightBoundary;
+        leftBoundary = hint.leftBoundary;
+        rightBoundary = hint.rightBoundary;
 
-            targetY = hint.targetY;
-            targetX = hint.targetX;
-            
+        targetY = hint.targetY;
+        targetX = hint.targetX;
 
-            topMargin = hint.topMargin;
-            bottomMargin = hint.bottomMargin;
-            leftMargin = hint.leftMargin;
-            rightMargin = hint.rightMargin;
 
-            priority = hint.priority;
-            strategy = hint.strategy;
-        }
-        finally
-        {
-            Lock.ExitWriteLock();
-        }
+        topMargin = hint.topMargin;
+        bottomMargin = hint.bottomMargin;
+        leftMargin = hint.leftMargin;
+        rightMargin = hint.rightMargin;
+
+        priority = hint.priority;
+        strategy = hint.strategy;
     }
-    
+
     #endregion
 }

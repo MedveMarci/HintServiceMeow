@@ -1,9 +1,9 @@
 ﻿using System;
 using Hints;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Interface;
 using HintServiceMeow.Core.Models.Arguments;
-using HintServiceMeow.Core.Models.UniryAdaptors;
-using HintServiceMeow.Core.Utilities.Tools;
+using HintServiceMeow.Core.Models.UnityAdaptors;
 using Mirror;
 
 namespace HintServiceMeow.Core.Utilities.UnityAdaptors;
@@ -19,22 +19,19 @@ internal class ScpslDisplayOutput(ReferenceHub referenceHub) : IDisplayOutput
     {
         try
         {
-            if (Logger.Instance.IsDebugEnabled)
-                Logger.Instance.Debug($"[ScpslDisplayOutput] Trying to show hint to player {referenceHub.PlayerId} (X/Y: {ScreenResolution.XyRatio}) with content: {arg.Content}");
+            LogManager.Debug($"[ScpslDisplayOutput] Trying to show hint to player {referenceHub.PlayerId} (X/Y: {ScreenResolution.XyRatio}) with content: {arg.Content}");
 
             if (connectionToPlayer is not { isReady: true })
                 return;
 
-            if (Logger.Instance.IsDebugEnabled)
-                Logger.Instance.Debug($"[ScpslDisplayOutput] Player {referenceHub.PlayerId} is ready to receive messages. Proceeding to send hint.");
+            LogManager.Debug($"[ScpslDisplayOutput] Player {referenceHub.PlayerId} is ready to receive messages. Proceeding to send hint.");
 
             bool hasParameters = arg.Parameters.Length > 0;
 
 
             if (!hasParameters && string.Equals(arg.Content, lastSentContent, StringComparison.Ordinal))
             {
-                if (Logger.Instance.IsDebugEnabled)
-                    Logger.Instance.Debug($"[ScpslDisplayOutput] Skipping unchanged hint for player {referenceHub.PlayerId}.");
+                LogManager.Debug($"[ScpslDisplayOutput] Skipping unchanged hint for player {referenceHub.PlayerId}.");
                 return;
             }
 
@@ -54,15 +51,14 @@ internal class ScpslDisplayOutput(ReferenceHub referenceHub) : IDisplayOutput
 
             HintMessage hintMessage = new(new TextHint(arg.Content, hintParameters, hintEffects, arg.Duration));
             connectionToPlayer.Send(hintMessage);
-            
+
             lastSentContent = hasParameters ? null : arg.Content;
 
-            if (Logger.Instance.IsDebugEnabled)
-                Logger.Instance.Debug($"[ScpslDisplayOutput] Hint sent to player {referenceHub.PlayerId} successfully.");
+            LogManager.Debug($"[ScpslDisplayOutput] Hint sent to player {referenceHub.PlayerId} successfully.");
         }
         catch (Exception ex)
         {
-            Logger.Instance.Error(ex);
+            LogManager.Error(ex.ToString());
         }
     }
 }

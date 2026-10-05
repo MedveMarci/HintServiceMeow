@@ -16,7 +16,7 @@ public sealed class WidthTag : RichTag
     {
         this.value = value;
     }
-    
+
     /// <summary>
     ///     Creates a <see cref="WidthTag" /> with a custom width constraint.
     /// </summary>

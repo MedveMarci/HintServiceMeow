@@ -29,7 +29,7 @@ internal struct LineInfo(TextSegment[] characterInfos, LineStyle style, string c
         {
             if (Style.LineHeight != null)
                 return Style.LineHeight.Value;
-            
+
             if (CharacterInfos.Length == 0)
                 return emptyLineHeight;
 

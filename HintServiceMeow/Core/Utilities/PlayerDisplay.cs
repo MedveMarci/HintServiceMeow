@@ -4,7 +4,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Reflection;
-using System.Threading.Tasks;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Enum;
 using HintServiceMeow.Core.Extension;
 using HintServiceMeow.Core.Interface;
@@ -13,7 +13,6 @@ using HintServiceMeow.Core.Models.Arguments;
 using HintServiceMeow.Core.Models.Hints;
 using HintServiceMeow.Core.Models.UnityAdaptors.Effects;
 using HintServiceMeow.Core.Utilities.Parser;
-using HintServiceMeow.Core.Utilities.Tools;
 using HintServiceMeow.Core.Utilities.UnityAdaptors;
 using LabApi.Features.Wrappers;
 
@@ -24,107 +23,30 @@ namespace HintServiceMeow.Core.Utilities;
 /// </summary>
 public class PlayerDisplay : IPlayerDisplay
 {
+    public delegate void UpdateAvailableEventHandler(UpdateAvailableEventArg ev);
+
     private static readonly HashSet<PlayerDisplay> PlayerDisplayList = [];
-    private static readonly object PlayerDisplayListLock = new();
 
     private readonly List<IDisplayOutput> displayOutputs = [];
 
-    private volatile IDisplayOutput[] displayOutputsSnapshot = [];
+    private IDisplayOutput[] displayOutputsSnapshot = [];
 
     private readonly IPlayerContext playerContext; // Initialize in constructor
     private readonly HintCollection hintCollection = new();
-    private readonly ITaskScheduler updateScheduler; // Initialize in constructor
-
-    private readonly object displayOutputsLock = new();
-    private readonly object currentParserTaskLock = new();
+    private readonly UpdateQueue updateQueue; // Initialize in constructor
+    private readonly Func<DateTime> clock; // Initialize in constructor
 
     private IHintParser hintParser = new HintParser();
     private ICompatibilityAdaptor adapter; // Initialize in constructor
 
-    private readonly IMainThreadDispatcher mainThreadDispatcher = new UnityMainThreadDispatcher();
-
     private readonly ICoroutine coroutine; // Initialize in constructor
     private readonly ICoroutineRunner coroutineRunner = new UnityCoroutineRunner();
 
-    private Task? currentParserTask;
+    private DateTime lastUpdateTime;
+    private TimeSpan minUpdateInterval = TimeSpan.Zero;
 
-    private volatile bool isDisposed;
-
-    internal PlayerDisplay(IPlayerContext playerContext, HintCollection? displayHints = null, ITaskScheduler? updateScheduler = null, ICompatibilityAdaptor? adaptor = null, IHintParser? hintParser = null, IEnumerable<IDisplayOutput>? displayOutputs = null, IMainThreadDispatcher? dispatcher = null, ICoroutineRunner? coroutineRunner = null)
-    {
-        // Initialize each components
-        this.playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
-
-        if (displayHints != null)
-            hintCollection = displayHints;
-        if (hintParser != null)
-            this.hintParser = hintParser;
-        if (displayOutputs != null)
-        {
-            this.displayOutputs = [.. displayOutputs];
-            foreach (IDisplayOutput displayOutput in displayOutputs) displayOutput.ScreenResolution.PropertyChanged += OnResolutionUpdate;
-            RefreshDisplayOutputsSnapshot();
-        }
-
-        if (dispatcher != null)
-            mainThreadDispatcher = dispatcher;
-        if (coroutineRunner != null)
-            this.coroutineRunner = coroutineRunner;
-
-        adapter = adaptor ?? new CompatibilityAdaptor(this); // Default compatibility adaptor
-        this.updateScheduler = updateScheduler ?? new TaskScheduler(); // Default task scheduler with zero interval
-
-        // When collection changed, update the content on player's screen
-        hintCollection.CollectionChanged += OnCollectionChanged;
-
-        // Initialize update scheduler. Make update scheduler wait for a cycle when the previous parper is still running. Set action of the scheduler to start parser task.
-        this.updateScheduler.InvokeUntilSuccess = true;
-        this.updateScheduler.Start(TimeSpan.Zero, () =>
-        {
-            lock (currentParserTaskLock)
-            {
-                if (currentParserTask != null)
-                    return false; // If a parser task is already running, wait till next cycle to update
-            }
-
-            this.updateScheduler.Pause(); // Pause action until the parser task is finishing
-            StartParserTask();
-
-            return true; // Success
-        });
-
-        // Start the main coroutine on main thread
-        coroutine = this.coroutineRunner.StartCoroutine(CoroutineMethod());
-    }
-
-    private PlayerDisplay(ReferenceHub referenceHub) : this(new ReferenceHubContext(referenceHub))
-    {
-        if (referenceHub is null)
-            throw new ArgumentNullException(nameof(referenceHub));
-
-        // Do not add display output for host
-        if (referenceHub.IsHost)
-        {
-            RefreshDisplayOutputsSnapshot();
-            return;
-        }
-
-        ScpslDisplayOutput displayOutput = new(referenceHub);
-        displayOutputs.Add(displayOutput);
-        displayOutput.ScreenResolution.PropertyChanged += OnResolutionUpdate;
-        RefreshDisplayOutputsSnapshot();
-    }
-
-    /// <summary>
-    ///     Represents a method that handles the <see cref="UpdateAvailable" /> event.
-    /// </summary>
-    /// <param name="ev">The event arguments containing the player display context.</param>
-    public delegate void UpdateAvailableEventHandler(UpdateAvailableEventArg ev);
-
-    /// <summary>
-    ///     Invoked every tick when the player's display is ready to receive a hint update.
-    /// </summary>
-    public event UpdateAvailableEventHandler? UpdateAvailable;
+    private bool isUpdateQueued;
+    private bool isDisposed;
 
     /// <summary>
     ///     Gets the player this instance binds to.
@@ -160,9 +82,67 @@ public class PlayerDisplay : IPlayerDisplay
     /// </remarks>
     public TimeSpan MinUpdateInterval
     {
-        get => updateScheduler.MinInterval;
-        set => updateScheduler.MinInterval = value;
+        get => minUpdateInterval;
+        set => minUpdateInterval = value <= TimeSpan.Zero ? TimeSpan.Zero : value;
     }
+
+    internal DateTime ScheduledUpdateTime { get; private set; } = DateTime.MaxValue;
+
+    internal PlayerDisplay(IPlayerContext playerContext, HintCollection? displayHints = null, ICompatibilityAdaptor? adaptor = null, IHintParser? hintParser = null, IEnumerable<IDisplayOutput>? displayOutputs = null, ICoroutineRunner? coroutineRunner = null, UpdateQueue? updateQueue = null, Func<DateTime>? clock = null)
+    {
+        // Initialize each components
+        this.playerContext = playerContext ?? throw new ArgumentNullException(nameof(playerContext));
+
+        if (displayHints != null)
+            hintCollection = displayHints;
+        if (hintParser != null)
+            this.hintParser = hintParser;
+        if (displayOutputs != null)
+        {
+            IEnumerable<IDisplayOutput> outputs = displayOutputs as IDisplayOutput[] ?? [.. displayOutputs];
+            this.displayOutputs = [.. outputs];
+            foreach (IDisplayOutput displayOutput in outputs) displayOutput.ScreenResolution.PropertyChanged += OnResolutionUpdate;
+            RefreshDisplayOutputsSnapshot();
+        }
+
+        if (coroutineRunner != null)
+            this.coroutineRunner = coroutineRunner;
+
+        this.updateQueue = updateQueue ?? UpdateQueue.Instance;
+        this.clock = clock ?? (() => DateTime.Now);
+        lastUpdateTime = this.clock();
+
+        adapter = adaptor ?? new CompatibilityAdaptor(this); // Default compatibility adaptor
+
+        // When collection changed, update the content on player's screen
+        hintCollection.CollectionChanged += OnCollectionChanged;
+
+        // Start the main coroutine on main thread
+        coroutine = this.coroutineRunner.StartCoroutine(CoroutineMethod());
+    }
+
+    private PlayerDisplay(ReferenceHub referenceHub) : this(new ReferenceHubContext(referenceHub))
+    {
+        if (referenceHub is null)
+            throw new ArgumentNullException(nameof(referenceHub));
+
+        // Do not add display output for host
+        if (referenceHub.IsHost)
+        {
+            RefreshDisplayOutputsSnapshot();
+            return;
+        }
+
+        ScpslDisplayOutput displayOutput = new(referenceHub);
+        displayOutputs.Add(displayOutput);
+        displayOutput.ScreenResolution.PropertyChanged += OnResolutionUpdate;
+        RefreshDisplayOutputsSnapshot();
+    }
+
+    /// <summary>
+    ///     Invoked every tick when the player's display is ready to receive a hint update.
+    /// </summary>
+    public event UpdateAvailableEventHandler? UpdateAvailable;
 
     /// <summary>
     ///     Gets or creates the <see cref="PlayerDisplay" /> instance for the specified reference hub.
@@ -175,17 +155,14 @@ public class PlayerDisplay : IPlayerDisplay
         if (referenceHub is null)
             throw new ArgumentNullException(nameof(referenceHub));
 
-        lock (PlayerDisplayListLock)
-        {
-            foreach (PlayerDisplay playerDisplay in PlayerDisplayList)
-                if (playerDisplay.playerContext is ReferenceHubContext referenceHubContext && referenceHubContext.ReferenceHub == referenceHub)
-                    return playerDisplay;
+        foreach (PlayerDisplay playerDisplay in PlayerDisplayList)
+            if (playerDisplay.playerContext is ReferenceHubContext referenceHubContext && referenceHubContext.ReferenceHub == referenceHub)
+                return playerDisplay;
 
-            // Create new one if not found.
-            PlayerDisplay newPlayerDisplay = new(referenceHub);
-            PlayerDisplayList.Add(newPlayerDisplay);
-            return newPlayerDisplay;
-        }
+        // Create new one if not found.
+        PlayerDisplay newPlayerDisplay = new(referenceHub);
+        PlayerDisplayList.Add(newPlayerDisplay);
+        return newPlayerDisplay;
     }
 
     /// <summary>
@@ -217,12 +194,9 @@ public class PlayerDisplay : IPlayerDisplay
     /// <param name="output">The display output to add.</param>
     public void AddDisplayOutput(IDisplayOutput output)
     {
-        lock (displayOutputsLock)
-        {
-            displayOutputs.Add(output);
-            output.ScreenResolution.PropertyChanged += OnResolutionUpdate;
-            RefreshDisplayOutputsSnapshot();
-        }
+        displayOutputs.Add(output);
+        output.ScreenResolution.PropertyChanged += OnResolutionUpdate;
+        RefreshDisplayOutputsSnapshot();
     }
 
     /// <summary>
@@ -231,12 +205,9 @@ public class PlayerDisplay : IPlayerDisplay
     /// <param name="output">The display output to remove.</param>
     public void RemoveDisplayOutput(IDisplayOutput output)
     {
-        lock (displayOutputsLock)
-        {
-            output.ScreenResolution.PropertyChanged -= OnResolutionUpdate;
-            displayOutputs.Remove(output);
-            RefreshDisplayOutputsSnapshot();
-        }
+        output.ScreenResolution.PropertyChanged -= OnResolutionUpdate;
+        displayOutputs.Remove(output);
+        RefreshDisplayOutputsSnapshot();
     }
 
     /// <summary>
@@ -245,19 +216,14 @@ public class PlayerDisplay : IPlayerDisplay
     /// <typeparam name="T">The type of display output to remove.</typeparam>
     public void RemoveDisplayOutput<T>() where T : IDisplayOutput
     {
-        lock (displayOutputsLock)
-        {
-            foreach (IDisplayOutput output in displayOutputs)
-                if (output is T)
-                    output.ScreenResolution.PropertyChanged -= OnResolutionUpdate;
+        foreach (IDisplayOutput output in displayOutputs)
+            if (output is T)
+                output.ScreenResolution.PropertyChanged -= OnResolutionUpdate;
 
-            displayOutputs.RemoveAll(x => x is T);
-            RefreshDisplayOutputsSnapshot();
-        }
+        displayOutputs.RemoveAll(x => x is T);
+        RefreshDisplayOutputsSnapshot();
     }
 
-    // Rebuilds the lock-free snapshot of displayOutputs. Must be called while holding
-    // displayOutputsLock (or before the display is shared with other threads).
     private void RefreshDisplayOutputsSnapshot()
     {
         displayOutputsSnapshot = [.. displayOutputs];
@@ -605,8 +571,6 @@ public class PlayerDisplay : IPlayerDisplay
         // Clear pd's reference to hints
         hintCollection.ClearHints(null);
 
-        updateScheduler.Dispose(); // Stop task scheduler's coroutine
-
         adapter.Dispose(); // Stop compatibility adaptor's coroutine
     }
 
@@ -617,17 +581,14 @@ public class PlayerDisplay : IPlayerDisplay
 
         ReferenceHubContext context = new(referenceHub);
 
-        lock (PlayerDisplayListLock)
-        {
-            PlayerDisplay? pd = PlayerDisplayList.FirstOrDefault(x => x.playerContext.Equals(context));
+        PlayerDisplay? pd = PlayerDisplayList.FirstOrDefault(x => x.playerContext.Equals(context));
 
-            if (pd is null)
-                return;
+        if (pd is null)
+            return;
 
-            ((IDisposable)pd).Dispose();
+        ((IDisposable)pd).Dispose();
 
-            PlayerDisplayList.Remove(pd); // Remove from the reference list
-        }
+        PlayerDisplayList.Remove(pd); // Remove from the reference list
     }
 
     internal void InternalAddHint(string name, AbstractHint hint)
@@ -713,19 +674,26 @@ public class PlayerDisplay : IPlayerDisplay
 
             try
             {
-                // Single elapsed snapshot reused for both checks below, instead of
-                // computing it twice per frame (once here, once via IsReadyForNextAction).
-                TimeSpan elapsed = updateScheduler.Elapsed;
+                TimeSpan elapsed = clock() - lastUpdateTime;
 
                 // Periodic update
                 if (elapsed > TimeSpan.FromSeconds(5))
                     ScheduleUpdate();
 
-                if (elapsed >= updateScheduler.MinInterval) UpdateAvailable?.Invoke(new UpdateAvailableEventArg(this));
+                if (elapsed >= minUpdateInterval)
+                {
+                    if (!isUpdateQueued && ScheduledUpdateTime <= clock())
+                    {
+                        isUpdateQueued = true;
+                        updateQueue.Enqueue(this);
+                    }
+
+                    UpdateAvailable?.Invoke(new UpdateAvailableEventArg(this));
+                }
             }
             catch (Exception ex)
             {
-                Logger.Instance.Error(ex);
+                LogManager.Error(ex.ToString());
                 isSuccessful = false; // If error occurred, set the success flag to false
             }
 
@@ -776,121 +744,85 @@ public class PlayerDisplay : IPlayerDisplay
     {
         if (maxWaitingTime <= 0)
         {
-            updateScheduler.Invoke();
+            RequestUpdate(0f);
             return;
         }
 
-        // Logger.Instance.Debug($"[PlayerDisplay] Scheduling update with max waiting time: {maxWaitingTime}s");
-        IReadOnlyList<IReadOnlyList<AbstractHint>> allGroups = hintCollection.AllGroups;
+        // LogManager.Debug($"[PlayerDisplay] Scheduling update with max waiting time: {maxWaitingTime}s");
+        AbstractHint[][] allGroups = hintCollection.AllGroups;
 
-        DateTime now = DateTime.Now;
+        DateTime now = clock();
         DateTime maxTime = now.AddSeconds(maxWaitingTime);
         DateTime delayedUpdateTime = now;
 
         // Iterate the groups directly instead of flattening them into a temporary list first.
-        for (int i = 0; i < allGroups.Count; i++)
+        foreach (AbstractHint[] group in allGroups)
+        foreach (AbstractHint h in group)
         {
-            IReadOnlyList<AbstractHint> group = allGroups[i];
-            for (int j = 0; j < group.Count; j++)
-            {
-                AbstractHint h = group[j];
+            if (h.SyncSpeed < updatingHint?.SyncSpeed || h == updatingHint)
+                continue;
 
-                if (h.SyncSpeed < updatingHint?.SyncSpeed || h == updatingHint)
-                    continue;
+            DateTime estNextUpdate = h.UpdateAnalyser.EstimateNextUpdate();
 
-                DateTime estNextUpdate = h.UpdateAnalyser.EstimateNextUpdate();
+            if (estNextUpdate == DateTime.MaxValue)
+                continue;
 
-                if (estNextUpdate == DateTime.MaxValue)
-                    continue;
-
-                // Only consider the updates that will happen within the max waiting time
-                if (estNextUpdate > delayedUpdateTime && estNextUpdate < maxTime)
-                    delayedUpdateTime = estNextUpdate;
-            }
+            // Only consider the updates that will happen within the max waiting time
+            if (estNextUpdate > delayedUpdateTime && estNextUpdate < maxTime)
+                delayedUpdateTime = estNextUpdate;
         }
 
-        // Logger.Instance.Debug($"[PlayerDisplay] Final delayed update: {delayedUpdateTime}");
         float delay = (float)(delayedUpdateTime - now).TotalSeconds;
 
         // Clamp delay to maxWaitingTime
         // Increase delay by 10% to increase hit rate of prediction
         delay = Math.Min(maxWaitingTime, delay * 1.1f);
 
-        updateScheduler.Invoke(delay, DelayType.KeepFastest);
+        RequestUpdate(delay);
     }
 
-    private void StartParserTask()
+    private void RequestUpdate(float delay)
     {
-        lock (currentParserTaskLock)
+        DateTime updateTime = clock().AddSeconds(delay);
+
+        if (updateTime < ScheduledUpdateTime)
+            ScheduledUpdateTime = updateTime;
+    }
+
+    internal void UpdateDisplay()
+    {
+        isUpdateQueued = false;
+
+        if (isDisposed)
+            return;
+
+        // Reset before parsing, so that a hint that fails to parse is not retried every frame
+        ScheduledUpdateTime = DateTime.MaxValue;
+        lastUpdateTime = clock();
+
+        try
         {
-            if (currentParserTask is not null)
-                return;
+            List<float> allXyRatio = [];
+            foreach (IDisplayOutput output in displayOutputsSnapshot)
+                if (!allXyRatio.Contains(output.ScreenResolution.XyRatio))
+                    allXyRatio.Add(output.ScreenResolution.XyRatio);
 
-            currentParserTask = ConcurrentTaskDispatcher.Instance.Enqueue(async () =>
+            foreach (float xyRatio in allXyRatio)
             {
-                try
-                {
-                    List<float> allXyRatio = [];
-                    foreach (IDisplayOutput output in displayOutputsSnapshot)
-                        if (!allXyRatio.Contains(output.ScreenResolution.XyRatio))
-                            allXyRatio.Add(output.ScreenResolution.XyRatio);
+                HintParserResult result = hintParser.ParseToMessage(new HintParserArgument(hintCollection, xyRatio));
 
-                    foreach (float xyRatio in allXyRatio)
-                    {
-                        HintParserResult result = hintParser.ParseToMessage(new HintParserArgument(hintCollection, xyRatio));
-
-                        mainThreadDispatcher.Dispatch(() =>
-                        {
-                            try
-                            {
-                                // If destroyed while waiting for main thread, skip the update
-                                if (isDisposed)
-                                    return;
-
-                                SendHint(new DisplayOutputArg(this, result.Content, result.Parameters, [new TransparencyEffect(1)], 999999f), xyRatio);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Instance.Error(ex);
-                            }
-                        });
-                    }
-
-                    mainThreadDispatcher.Dispatch(() =>
-                    {
-                        lock (currentParserTaskLock)
-                        {
-                            currentParserTask = null; // Does this in main thread
-                        }
-
-                        updateScheduler.Resume(); // Resume action after the parser task is finishing
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Logger.Instance.Error(ex);
-
-                    lock (currentParserTaskLock)
-                    {
-                        currentParserTask = null;
-                    }
-
-                    updateScheduler.Resume(); // Resume action if parser or main thread dispatcher failed
-
-                    return Task.CompletedTask;
-                }
-
-                return Task.CompletedTask;
-            });
+                SendHint(new DisplayOutputArg(this, result.Content, result.Parameters, [new TransparencyEffect(1)], 999999f), xyRatio);
+            }
+        }
+        catch (Exception ex)
+        {
+            LogManager.Error(ex.ToString());
         }
     }
 
     private void SendHint(DisplayOutputArg content, float targetXyRatio)
     {
-        // Lock-free read of the immutable snapshot; it is replaced atomically on every change.
-        IDisplayOutput[] outputsSnapshot = displayOutputsSnapshot;
-
-        foreach (IDisplayOutput output in outputsSnapshot)
+        foreach (IDisplayOutput output in displayOutputsSnapshot)
             try
             {
                 if (output.ScreenResolution.XyRatio != targetXyRatio)
@@ -900,7 +832,7 @@ public class PlayerDisplay : IPlayerDisplay
             }
             catch (Exception ex)
             {
-                Logger.Instance.Error(ex);
+                LogManager.Error(ex.ToString());
             }
     }
 }

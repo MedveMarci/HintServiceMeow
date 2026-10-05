@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using HintServiceMeow.Core.Enum;
 using HintServiceMeow.Core.Extension;
+using HintServiceMeow.Core.Interface;
 using HintServiceMeow.Core.Models.Hints;
 using HintServiceMeow.Core.Utilities;
+using HintServiceMeow.Core.Utilities.UnityAdaptors;
 using HintServiceMeow.Plugin;
 
 namespace HintServiceMeow.UI.Utilities;
@@ -23,14 +25,6 @@ public class CommonHint : IDisposable
     {
         ReferenceHub = referenceHub;
 
-        itemHintsHideScheduler = new TaskScheduler();
-        mapHintsHideScheduler = new TaskScheduler();
-        roleHintsHideScheduler = new TaskScheduler();
-
-        itemHintsHideScheduler.Start(TimeSpan.Zero, () => itemHints.ForEach(x => x.Hide = true));
-        mapHintsHideScheduler.Start(TimeSpan.Zero, () => mapHints.ForEach(x => x.Hide = true));
-        roleHintsHideScheduler.Start(TimeSpan.Zero, () => roleHints.ForEach(x => x.Hide = true));
-        
         foreach (Hint itemHint in itemHints)
             PlayerDisplay.InternalAddHint(HintGroupId, itemHint);
         foreach (Hint mapHint in mapHints)
@@ -43,12 +37,23 @@ public class CommonHint : IDisposable
 
     void IDisposable.Dispose()
     {
+        itemHintsHideTimer?.Kill();
+        mapHintsHideTimer?.Kill();
+        roleHintsHideTimer?.Kill();
+
         PlayerDisplay.InternalClearHint(HintGroupId);
+    }
+
+    private static ICoroutine RestartHideTimer(ICoroutine? timer, List<Hint> hints, float time)
+    {
+        timer?.Kill();
+
+        return CoroutineRunner.CallAfter(TimeSpan.FromSeconds(time), () => hints.ForEach(x => x.Hide = true));
     }
 
     #region Common Hints
 
-    private readonly TaskScheduler itemHintsHideScheduler;
+    private ICoroutine? itemHintsHideTimer;
 
     private readonly List<Hint> itemHints =
     [
@@ -64,7 +69,7 @@ public class CommonHint : IDisposable
         }
     ];
 
-    private readonly TaskScheduler mapHintsHideScheduler;
+    private ICoroutine? mapHintsHideTimer;
 
     private readonly List<Hint> mapHints =
     [
@@ -81,7 +86,7 @@ public class CommonHint : IDisposable
         }
     ];
 
-    private readonly TaskScheduler roleHintsHideScheduler;
+    private ICoroutine? roleHintsHideTimer;
 
     private readonly List<Hint> roleHints =
     [
@@ -117,6 +122,8 @@ public class CommonHint : IDisposable
     #endregion
 
     #region Properties
+
+    internal static ICoroutineRunner CoroutineRunner { get; set; } = new UnityCoroutineRunner();
 
     private static PluginConfig Config => Plugin.Plugin.Instance.Config;
 
@@ -161,7 +168,7 @@ public class CommonHint : IDisposable
     {
         time ??= Config.ItemHintDisplayTime;
 
-        itemHintsHideScheduler.Invoke(time.Value);
+        itemHintsHideTimer = RestartHideTimer(itemHintsHideTimer, itemHints, time.Value);
 
         itemHints.ForEach(x => x.Hide = true);
 
@@ -222,7 +229,7 @@ public class CommonHint : IDisposable
     {
         time ??= Config.MapHintDisplayTime;
 
-        mapHintsHideScheduler.Invoke(time.Value);
+        mapHintsHideTimer = RestartHideTimer(mapHintsHideTimer, mapHints, time.Value);
 
         mapHints.ForEach(x => x.Hide = true);
 
@@ -283,7 +290,7 @@ public class CommonHint : IDisposable
     {
         time ??= Config.RoleHintDisplayTime;
 
-        roleHintsHideScheduler.Invoke(time.Value);
+        roleHintsHideTimer = RestartHideTimer(roleHintsHideTimer, roleHints, time.Value);
 
         roleHints.ForEach(x => x.Hide = true);
 

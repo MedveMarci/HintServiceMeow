@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -19,7 +18,6 @@ internal class RichTextParser
 
     private static readonly Cache<(string, RichTextParserSetting), RichTextParserResult> parserCache = new(200);
 
-    private readonly object parserLock = new();
 
     private TextSegmentStyle? charStyleCache;
     private LineStyle? lineStyleAutoWrappedCache;
@@ -44,65 +42,62 @@ internal class RichTextParser
 
         if (parserCache.TryGet((rawText, setting), out RichTextParserResult cachedResult)) return cachedResult;
 
-        lock (parserLock)
-        {
-            Reset();
-            defaultStyle = setting.DefaultStyle;
-            illegalTags = setting.IllegalTags;
-            ignoreTags = setting.IgnoreTags;
+        Reset();
+        defaultStyle = setting.DefaultStyle;
+        illegalTags = setting.IllegalTags;
+        ignoreTags = setting.IgnoreTags;
 
-            sb = StringBuilderPool.Instance.Rent();
+        sb = StringBuilderPool.Instance.Rent();
 
-            Tokenizer tokenizer = TokenizerPool.Instance.Rent();
-            List<Models.Parser.Token> tokens = tokenizer.Tokenize(rawText, setting.Parameters);
-            TokenizerPool.Instance.Return(tokenizer);
+        Tokenizer tokenizer = TokenizerPool.Instance.Rent();
+        List<Models.Parser.Token> tokens = tokenizer.Tokenize(rawText, setting.Parameters);
+        TokenizerPool.Instance.Return(tokenizer);
 
-            int parameterIndex = setting.ParameterIndex;
+        int parameterIndex = setting.ParameterIndex;
 
-            foreach (Models.Parser.Token t in tokens)
-                switch (t.Type)
-                {
-                    case RichTextTokenType.Text:
-                        HandleText(t.Text!);
-                        break;
-                    case RichTextTokenType.OpenTag:
-                        HandleOpenTag(t);
-                        break;
-                    case RichTextTokenType.CloseTag:
-                        HandleCloseTag(t);
-                        break;
-                    case RichTextTokenType.SelfCloseTag:
-                        HandleSelfCloseTag(t);
-                        break;
-                    case RichTextTokenType.Parameter:
-                        HandleText($"{{{parameterIndex}}}");
-                        parameterIndex++;
-                        parameters.Add(t.Parameter!);
-                        break;
-                    case RichTextTokenType.LineBreak:
-                        FinishLine(defaultStyle, false);
-                        break;
-                }
+        foreach (Models.Parser.Token t in tokens)
+            switch (t.Type)
+            {
+                case RichTextTokenType.Text:
+                    HandleText(t.Text!);
+                    break;
+                case RichTextTokenType.OpenTag:
+                    HandleOpenTag(t);
+                    break;
+                case RichTextTokenType.CloseTag:
+                    HandleCloseTag(t);
+                    break;
+                case RichTextTokenType.SelfCloseTag:
+                    HandleSelfCloseTag(t);
+                    break;
+                case RichTextTokenType.Parameter:
+                    HandleText($"{{{parameterIndex}}}");
+                    parameterIndex++;
+                    parameters.Add(t.Parameter!);
+                    break;
+                case RichTextTokenType.LineBreak:
+                    FinishLine(defaultStyle, false);
+                    break;
+            }
 
-            if (setting.CloseUnclosedTags)
-                CloseUnclosedTag();
+        if (setting.CloseUnclosedTags)
+            CloseUnclosedTag();
 
-            FinishLine(defaultStyle, false);
+        FinishLine(defaultStyle, false);
 
-            LineInfo[] lineInfosArray = [.. lineInfos];
-            IParameter[] parametersArray = [.. parameters];
+        LineInfo[] lineInfosArray = [.. lineInfos];
+        IParameter[] parametersArray = [.. parameters];
 
-            Reset();
+        Reset();
 
-            StringBuilderPool.Instance.Return(sb);
-            sb = null;
+        StringBuilderPool.Instance.Return(sb);
+        sb = null;
 
-            RichTextParserResult result = new(lineInfosArray, parametersArray, parameterIndex);
-            
-            parserCache.Add((rawText, setting.Clone()), result);
+        RichTextParserResult result = new(lineInfosArray, parametersArray, parameterIndex);
 
-            return result;
-        }
+        parserCache.Add((rawText, setting.Clone()), result);
+
+        return result;
     }
 
     private void CloseUnclosedTag()
@@ -362,7 +357,7 @@ internal class RichTextParser
 
             lineStyle = lineStyleNonAutoWrappedCache;
         }
-        
+
         float emptyLineHeight = currentLineChars.Count == 0 ? currentStyle.GetActualSize(defaultStyle.CharStyle.FontSize) : 0f;
 
         lineInfos.Add(new LineInfo([.. currentLineChars], lineStyle, sb!.ToString(), emptyLineHeight));
@@ -450,7 +445,7 @@ internal class RichTextParser
         }
 
         #region Tag handling data
-        
+
         public Stack<HintAlignment> Alignment { get; } = new(8);
 
         public int AllCaps { get; set; }
@@ -458,7 +453,7 @@ internal class RichTextParser
         public byte? Alpha { get; set; }
 
         public int Bold { get; set; }
-        
+
         public Stack<Color> Color { get; } = new(8);
 
         public float? CharSpace { get; set; }
@@ -466,7 +461,7 @@ internal class RichTextParser
         public string? Font { get; set; }
 
         public int? FontWeight { get; set; }
-        
+
         public int Italic { get; set; }
 
         public Stack<float> Indent { get; } = new(8);
@@ -614,7 +609,7 @@ internal class RichTextParser
                 color = new Color(r, g, b, a);
                 return true;
             }
-            
+
             if (hex.Length == 8)
             {
                 r = byte.Parse(hex.Substring(0, 2), NumberStyles.HexNumber);
@@ -1069,7 +1064,6 @@ internal class RichTextParser
                 currentStyle.Smallcap = false;
                 ClearCharStyleCache();
                 break;
-
         }
 
         if (!illegalTags.Contains(tagName))

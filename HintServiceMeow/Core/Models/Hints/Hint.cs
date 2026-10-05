@@ -14,41 +14,20 @@ public class Hint : AbstractHint
     private float xCoordinate;
     private float yCoordinate = 700;
 
-    private TransitionState? xCoordinateTransitionState;
-
     /// <summary>
     ///     Gets or sets the Y coordinate of the hint. Higher Y coordinate means lower position
     ///     Select from 0 to 1080 on any screen.
     /// </summary>
     public float YCoordinate
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return yCoordinate;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => yCoordinate;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (yCoordinate.Equals(value))
-                    return;
+            if (yCoordinate.Equals(value))
+                return;
 
-                yCoordinate = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            yCoordinate = value;
 
             OnHintUpdated(nameof(YCoordinate));
         }
@@ -60,33 +39,14 @@ public class Hint : AbstractHint
     /// </summary>
     public float XCoordinate
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return xCoordinate;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => xCoordinate;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (xCoordinate.Equals(value))
-                    return;
+            if (xCoordinate.Equals(value))
+                return;
 
-                xCoordinate = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            xCoordinate = value;
 
             OnHintUpdated(nameof(XCoordinate));
         }
@@ -97,33 +57,14 @@ public class Hint : AbstractHint
     /// </summary>
     public HintAlignment Alignment
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return alignment;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => alignment;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (alignment == value)
-                    return;
+            if (alignment == value)
+                return;
 
-                alignment = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            alignment = value;
 
             OnHintUpdated(nameof(Alignment));
         }
@@ -134,33 +75,14 @@ public class Hint : AbstractHint
     /// </summary>
     public HintVerticalAlign YCoordinateAlign
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return yCoordinateAlign;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get => yCoordinateAlign;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (yCoordinateAlign == value)
-                    return;
+            if (yCoordinateAlign == value)
+                return;
 
-                yCoordinateAlign = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            yCoordinateAlign = value;
 
             OnHintUpdated(nameof(YCoordinateAlign));
         }
@@ -168,33 +90,14 @@ public class Hint : AbstractHint
 
     public Transition.Transition? XCoordinateTransition
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return field;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (field == value)
-                    return;
+            if (field == value)
+                return;
 
-                field = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            field = value;
 
             OnHintUpdated(nameof(XCoordinateTransition));
         }
@@ -202,113 +105,33 @@ public class Hint : AbstractHint
 
     public Transition.Transition? YCoordinateTransition
     {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return field;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+        get;
 
         set
         {
-            Lock.EnterWriteLock();
-            try
-            {
-                if (field == value)
-                    return;
+            if (field == value)
+                return;
 
-                field = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
+            field = value;
 
             OnHintUpdated(nameof(YCoordinateTransition));
         }
     }
 
-    internal TransitionState? XCoordinateTransitionState
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return xCoordinateTransitionState;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
+    internal TransitionState? XCoordinateTransitionState { get; set; }
 
-        set
-        {
-            Lock.EnterWriteLock();
-            try
-            {
-                xCoordinateTransitionState = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
-        }
-    }
-
-    internal TransitionState? VOffsetTransitionState
-    {
-        get
-        {
-            Lock.EnterReadLock();
-            try
-            {
-                return field;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
-        }
-
-        set
-        {
-            Lock.EnterWriteLock();
-            try
-            {
-                field = value;
-            }
-            finally
-            {
-                Lock.ExitWriteLock();
-            }
-        }
-    }
+    internal TransitionState? VOffsetTransitionState { get; set; }
 
     internal float CurrentXCoordinate
     {
         get
         {
-            Lock.EnterReadLock();
+            TransitionState? transitionState = XCoordinateTransitionState;
 
-            try
-            {
-                if (xCoordinateTransitionState is null)
-                    return xCoordinate;
+            if (transitionState is null)
+                return xCoordinate;
 
-                return xCoordinateTransitionState.CurrentValue;
-            }
-            finally
-            {
-                Lock.ExitReadLock();
-            }
+            return transitionState.CurrentValue;
         }
     }
 
@@ -318,7 +141,7 @@ public class Hint : AbstractHint
 
         xCoordinate = x;
         yCoordinate = y;
-        
+
         alignment = HintAlignment.Center;
         yCoordinateAlign = HintVerticalAlign.Bottom;
         ResolutionOption = ResolutionOption.None;
@@ -338,18 +161,10 @@ public class Hint : AbstractHint
     /// <param name="hint">The hint whose properties are copied into this instance.</param>
     public Hint(Hint hint) : base(hint)
     {
-        Lock.EnterWriteLock();
-        try
-        {
-            yCoordinate = hint.yCoordinate;
-            xCoordinate = hint.xCoordinate;
-            alignment = hint.alignment;
-            yCoordinateAlign = hint.yCoordinateAlign;
-        }
-        finally
-        {
-            Lock.ExitWriteLock();
-        }
+        yCoordinate = hint.yCoordinate;
+        xCoordinate = hint.xCoordinate;
+        alignment = hint.alignment;
+        yCoordinateAlign = hint.yCoordinateAlign;
     }
 
     #endregion

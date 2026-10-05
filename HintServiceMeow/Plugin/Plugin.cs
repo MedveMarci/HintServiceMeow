@@ -21,7 +21,7 @@ internal class Plugin : LabApi.Loader.Features.Plugins.Plugin
 
     public override string Author => "MeowServer";
 
-    public override Version Version => new(6, 0, 0);
+    public override Version Version => new(7, 0, 0);
 
     public override Version RequiredApiVersion => new(LabApiProperties.CompiledVersion);
 
@@ -47,7 +47,6 @@ internal class Plugin : LabApi.Loader.Features.Plugins.Plugin
 
         // Initialize Components
         _ = FontTool.Instance;
-        _ = ConcurrentTaskDispatcher.Instance;
 
         NetworkTimeCache.Initialize(new UnityCoroutineRunner());
     }

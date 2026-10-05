@@ -12,7 +12,7 @@ public class HintTemplate : HintConfig
 
     /// <summary>Gets or sets whether the hint is hidden. Maps to <see cref="AbstractHint.Hide" />.</summary>
     public bool? Hide { get; set; }
-    
+
     /// <summary>Gets or sets the auto-text callback. Maps to <see cref="AbstractHint.AutoText" />.</summary>
     [YamlIgnore]
     public AutoContent.TextUpdateHandler? AutoText { get; set; }

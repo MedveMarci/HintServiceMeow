@@ -34,9 +34,7 @@ public static class Patcher
         Harmony.Unpatch(hintDisplayMethod, HarmonyPatchType.All);
         Harmony.Unpatch(sendHintMethod1, HarmonyPatchType.All);
         Harmony.Unpatch(sendHintMethod2, HarmonyPatchType.All);
-
-        if (sendHintMethod3 != null)
-            Harmony.Unpatch(sendHintMethod3, HarmonyPatchType.All);
+        Harmony.Unpatch(sendHintMethod3, HarmonyPatchType.All);
 
         Type patchType = typeof(Patches);
 
@@ -44,9 +42,7 @@ public static class Patcher
         Harmony.Patch(hintDisplayMethod, new HarmonyMethod(patchType.GetMethod(nameof(Patches.HintDisplayPatch))));
         Harmony.Patch(sendHintMethod1, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch1))));
         Harmony.Patch(sendHintMethod2, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch2))));
-
-        if (sendHintMethod3 != null)
-            Harmony.Patch(sendHintMethod3, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch3))));
+        Harmony.Patch(sendHintMethod3, new HarmonyMethod(patchType.GetMethod(nameof(Patches.SendHintPatch3))));
     }
 
     /// <summary>

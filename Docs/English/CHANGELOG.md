@@ -8,6 +8,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [7.0.0]
+### Changed
+#### Single-threaded updates
+- Hints are now built and sent on the main thread only.
+- Hints that did not change since the last update are reused instead of being parsed. This includes DynamicHints that stay in the same position.
+- Text size is measured once and reused until the text, font size or line height changes.
+### Fixed
+- Long lines from other plugins lost their size and other styles when the compatibility adaptor wrapped them, so the continuation lines were shown in a much bigger font.
+- Text width has not depended on the font size since 6.0.0: small text was measured far too wide and large text too narrow.
+- A `<mark>` highlight could stretch far above the hint, because the line break of every hint line was placed outside its vertical offset.
+
+### Removed
+- `AbstractHint.Lock`. HintServiceMeow no longer locks hints.
+- `Logger` and `ILogger`.
+
 ## [6.0.0]
 ### Added
 #### Transition

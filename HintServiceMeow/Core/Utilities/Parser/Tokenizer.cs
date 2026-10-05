@@ -9,7 +9,6 @@ namespace HintServiceMeow.Core.Utilities.Parser;
 
 internal class Tokenizer
 {
-    private readonly object tokenizerLock = new();
     private List<Models.Parser.Token> tokenList = [];
     private int index;
     private string? rawText;
@@ -17,56 +16,53 @@ internal class Tokenizer
 
     public List<Models.Parser.Token> Tokenize(string raw, Tuple<string, IParameter>[] registeredParameters)
     {
-        lock (tokenizerLock)
+        try
         {
-            try
+            sb = StringBuilderPool.Instance.Rent();
+            tokenList.Clear();
+            index = 0;
+            rawText = raw;
+
+            while (index < rawText.Length)
             {
-                sb = StringBuilderPool.Instance.Rent();
-                tokenList.Clear();
-                index = 0;
-                rawText = raw;
-
-                while (index < rawText.Length)
+                char c = raw[index];
+                switch (c)
                 {
-                    char c = raw[index];
-                    switch (c)
-                    {
-                        case '\\':
-                            if (TryHandleEscapeCharacter())
-                                continue;
-                            break;
-
-                        case '<':
-                            if (TryHandleRichTag())
-                                continue;
-                            break;
-
-                        case '{':
-                            if (TryHandleParameter(registeredParameters))
-                                continue;
-                            break;
-
-                        case '\n':
-                            PackTextInSbAndAdd(Models.Parser.Token.GetLineBreak());
-                            index++;
+                    case '\\':
+                        if (TryHandleEscapeCharacter())
                             continue;
-                    }
+                        break;
 
-                    sb.Append(c);
-                    index++;
+                    case '<':
+                        if (TryHandleRichTag())
+                            continue;
+                        break;
+
+                    case '{':
+                        if (TryHandleParameter(registeredParameters))
+                            continue;
+                        break;
+
+                    case '\n':
+                        PackTextInSbAndAdd(Models.Parser.Token.GetLineBreak());
+                        index++;
+                        continue;
                 }
 
-                PackTextInSb();
+                sb.Append(c);
+                index++;
+            }
 
-                List<Models.Parser.Token> result = tokenList;
-                tokenList = new List<Models.Parser.Token>(result.Count);
-                return result;
-            }
-            finally
-            {
-                StringBuilderPool.Instance.Return(sb);
-                sb = null;
-            }
+            PackTextInSb();
+
+            List<Models.Parser.Token> result = tokenList;
+            tokenList = new List<Models.Parser.Token>(result.Count);
+            return result;
+        }
+        finally
+        {
+            StringBuilderPool.Instance.Return(sb);
+            sb = null;
         }
     }
 

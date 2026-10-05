@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Enum;
 using HintServiceMeow.Core.Interface;
 using HintServiceMeow.Core.Models.Arguments;
@@ -15,7 +16,7 @@ using HintServiceMeow.Core.Utilities.UnityAdaptors;
 
 namespace HintServiceMeow.Core.Utilities.Parser;
 
-internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache = null, ICoordinateTools? coordinateTool = null, IPool<StringBuilder>? stringBuilderPool = null, IPool<RichTextParser>? richTextParserPool = null, IPool<Hint>? hintPool = null) : IHintParser
+internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache = null, ICoordinateTools? coordinateTool = null, IPool<StringBuilder>? stringBuilderPool = null, IPool<RichTextParser>? richTextParserPool = null) : IHintParser
 {
     private const string PlaceholderTop = "<line-height=0><voffset=9999>P</voffset>";
     private const string PlaceholderBottom = "<line-height=0><voffset=-9999>P</voffset>";
@@ -24,8 +25,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
     private readonly ICoordinateTools coordinateTool = coordinateTool ?? new CoordinateTools();
     private readonly IPool<StringBuilder> stringBuilderPool = stringBuilderPool ?? StringBuilderPool.Instance;
     private readonly IPool<RichTextParser> richTextParserPool = richTextParserPool ?? RichTextParserPool.Instance;
-    private readonly IPool<Hint> hintPool = hintPool ?? HintPool.Instance;
-    private readonly List<Hint> rentedHints = new(128);
+    private readonly HintRenderCache renderCache = new();
 
     // For ParseToMessage method
     private readonly List<TextArea> dynamicHintColliders = new(128);
@@ -53,13 +53,10 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
     {
         IReadOnlyList<IReadOnlyList<AbstractHint>> allGroups = arg.Collection.AllGroups;
 
-        if (Logger.Instance.IsDebugEnabled)
-            Logger.Instance.Debug($"[HintParser] Start parsing hints. Total groups: {allGroups.Count}. Screen Ratio (X/Y): {arg.ScreenXyRatio}.");
+        renderCache.BeginUpdate();
 
-        // The static-hint collision areas seeded below are only ever consumed when placing
-        // DynamicHints. Computing them (which measures every hint's width/height) is pure
-        // waste on the common all-static setup, so skip the whole loop unless there is at
-        // least one visible dynamic hint to place.
+        LogManager.Debug($"[HintParser] Start parsing hints. Total groups: {allGroups.Count}. Screen Ratio (X/Y): {arg.ScreenXyRatio}.");
+
         bool hasDynamicHint = false;
         for (int i = 0; i < allGroups.Count && !hasDynamicHint; i++)
         {
@@ -76,7 +73,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
             for (int i = 0; i < allGroups.Count; i++)
             for (int j = 0; j < allGroups[i].Count; j++)
                 if (allGroups[i][j] is Hint { Hide: false } hint && !string.IsNullOrEmpty(hint.Content.GetText()))
-                    dynamicHintColliders.Add(ParseToArea(hint, arg.ScreenXyRatio));
+                    dynamicHintColliders.Add(GetArea(hint, arg.ScreenXyRatio));
 
         for (int i = 0; i < allGroups.Count; i++)
         {
@@ -105,11 +102,11 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
                 if (handledDH is null)
                     continue;
 
-                dynamicHintColliders.Add(ParseToArea(handledDH, arg.ScreenXyRatio));
+                dynamicHintColliders.Add(GetArea(handledDH, arg.ScreenXyRatio));
                 orderedHints.Add(handledDH);
             }
 
-            for (int j = 0; j < orderedHints.Count; j++) sortBuffer.Add(new HintSortData(orderedHints[j], coordinateTool.GetYCoordinate(orderedHints[j], HintVerticalAlign.Bottom)));
+            for (int j = 0; j < orderedHints.Count; j++) sortBuffer.Add(new HintSortData(orderedHints[j], GetArea(orderedHints[j], arg.ScreenXyRatio).Bottom));
 
             // Sort and add to ordered hint groups
             sortBuffer.Sort();
@@ -133,7 +130,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
             // When a group ends
             if (orderedHintGroups[i] is null) continue;
 
-            ParseToRichText(orderedHintGroups[i], messageBuilder, arg.ScreenXyRatio);
+            RenderHint(orderedHintGroups[i], messageBuilder, arg.ScreenXyRatio);
         }
 
         messageBuilder.AppendLine(PlaceholderBottom); // Place Holder
@@ -146,6 +143,67 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
         Clear();
 
         return result;
+    }
+
+    private bool IsCacheable(Hint hint)
+    {
+        return hint.FontSizeTransition is null && hint.XCoordinateTransition is null && hint.YCoordinateTransition is null;
+    }
+
+    private Hint ToHint(DynamicHint dynamicHint, float x, float y)
+    {
+        Hint hint = renderCache.GetConvertedHint(dynamicHint);
+        hint.GetFromDynamicHint(dynamicHint, x, y);
+        return hint;
+    }
+
+    private TextArea GetArea(Hint hint, float xyRatio)
+    {
+        if (!IsCacheable(hint))
+            return ParseToArea(hint, xyRatio);
+
+        HintRenderCache.Entry entry = renderCache.Get(hint, xyRatio);
+        return entry.Area ??= ParseToArea(hint, xyRatio);
+    }
+
+    private (float Width, float Height) GetSize(AbstractHint hint)
+    {
+        string text = hint.Content.GetText() ?? string.Empty;
+
+        if (renderCache.TryGetSize(text, hint.FontSize, hint.LineHeight, out (float Width, float Height) size))
+            return size;
+
+        size = (coordinateTool.GetTextWidth(hint), coordinateTool.GetTextHeight(hint));
+        renderCache.AddSize(text, hint.FontSize, hint.LineHeight, size);
+        return size;
+    }
+
+    private void RenderHint(Hint hint, StringBuilder messageBuilder, float xyRatio)
+    {
+        if (!IsCacheable(hint))
+        {
+            ParseToRichText(hint, messageBuilder, xyRatio);
+            return;
+        }
+
+        HintRenderCache.Entry entry = renderCache.Get(hint, xyRatio);
+
+        if (entry.Fragment is not null && (entry.FragmentParameters.Length == 0 || entry.FirstParameterIndex == parameterIndex))
+        {
+            messageBuilder.Append(entry.Fragment);
+            hintParameters.AddRange(entry.FragmentParameters);
+            parameterIndex += entry.FragmentParameters.Length;
+            return;
+        }
+
+        int fragmentStart = messageBuilder.Length;
+        int parametersStart = hintParameters.Count;
+        entry.FirstParameterIndex = parameterIndex;
+
+        ParseToRichText(hint, messageBuilder, xyRatio);
+
+        entry.Fragment = messageBuilder.ToString(fragmentStart, messageBuilder.Length - fragmentStart);
+        entry.FragmentParameters = hintParameters.GetRange(parametersStart, hintParameters.Count - parametersStart).ToArray();
     }
 
     private float GetActualX(float rawX, float xyRatio, HintAlignment align, ResolutionOption option, float edgeMargin)
@@ -177,8 +235,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
 
     private Hint? ParseToHint(DynamicHint dynamicHint, IList<TextArea> colliders, float xyRatio)
     {
-        float dhWidth = coordinateTool.GetTextWidth(dynamicHint);
-        float dhHeight = coordinateTool.GetTextHeight(dynamicHint);
+        (float dhWidth, float dhHeight) = GetSize(dynamicHint);
 
         // Check target position before checking the cache
         float actualTargetX = GetActualX(dynamicHint.TargetX, xyRatio, HintAlignment.Center, dynamicHint.ResolutionOption, dynamicHint.EdgeMargin);
@@ -199,10 +256,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
             // Clear previous cached position since the target position is usable again
             dynamicHintPositionCache.TryRemove(dynamicHint.Guid, out _);
 
-            Hint hint = hintPool.Rent();
-            rentedHints.Add(hint);
-            hint.GetFromDynamicHint(dynamicHint, actualTargetX, dynamicHint.TargetY);
-            return hint;
+            return ToHint(dynamicHint, actualTargetX, dynamicHint.TargetY);
         }
 
         targetAreaAvailable = true;
@@ -217,13 +271,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
                     break;
                 }
 
-            if (targetAreaAvailable)
-            {
-                Hint hint = hintPool.Rent();
-                rentedHints.Add(hint);
-                hint.GetFromDynamicHint(dynamicHint, cachedPosition.Item1, cachedPosition.Item2);
-                return hint;
-            }
+            if (targetAreaAvailable) return ToHint(dynamicHint, cachedPosition.Item1, cachedPosition.Item2);
         }
 
         // If there's no cached position or cached position is not usable, then find new position
@@ -252,10 +300,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
             {
                 dynamicHintPositionCache.Add(dynamicHint.Guid, tuple);
 
-                Hint hint = hintPool.Rent();
-                rentedHints.Add(hint);
-                hint.GetFromDynamicHint(dynamicHint, tuple.Item1, tuple.Item2);
-                return hint;
+                return ToHint(dynamicHint, tuple.Item1, tuple.Item2);
             }
 
             if (tuple.Item2 < dynamicHint.BottomBoundary)
@@ -269,13 +314,7 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
         }
 
         // Failed to find a position, return according to DynamicHintStrategy
-        if (dynamicHint.Strategy == DynamicHintStrategy.StayInPosition)
-        {
-            Hint hint = hintPool.Rent();
-            rentedHints.Add(hint);
-            hint.GetFromDynamicHint(dynamicHint, actualTargetX, dynamicHint.TargetY);
-            return hint;
-        }
+        if (dynamicHint.Strategy == DynamicHintStrategy.StayInPosition) return ToHint(dynamicHint, actualTargetX, dynamicHint.TargetY);
 
         // DynamicHintStrategy.Hide
         return null;
@@ -294,11 +333,10 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
 
     private TextArea ParseToArea(Hint hint, float xyRatio)
     {
-        float xCoordinate = GetActualX(coordinateTool.GetXCoordinateWithAlignment(hint), xyRatio, hint.Alignment, hint.ResolutionOption, hint.EdgeMargin);
-        float yCoordinate = coordinateTool.GetYCoordinate(hint, HintVerticalAlign.Bottom);
+        (float width, float height) = GetSize(hint);
 
-        float width = coordinateTool.GetTextWidth(hint);
-        float height = coordinateTool.GetTextHeight(hint);
+        float xCoordinate = GetActualX(coordinateTool.GetXCoordinateWithAlignment(hint.XCoordinate, width, hint.Alignment), xyRatio, hint.Alignment, hint.ResolutionOption, hint.EdgeMargin);
+        float yCoordinate = coordinateTool.GetYCoordinate(hint.YCoordinate, height, hint.YCoordinateAlign, HintVerticalAlign.Bottom);
 
         return new TextArea
         {
@@ -309,17 +347,17 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
         };
     }
 
-    private float GetVOffset(Hint hint, HintVerticalAlign align)
+    private float GetVOffset(Hint hint, float textHeight)
     {
-        return 700 - coordinateTool.GetYCoordinate(hint, align) // Start at the top of the first line
+        return 700 - coordinateTool.GetYCoordinate(hint.YCoordinate, textHeight, hint.YCoordinateAlign, HintVerticalAlign.Top) // Start at the top of the first line
                + hint.LineHeight; // Add extra line height on top of the first line so that the line height will not be calculated for the first line
     }
 
-    private float GetCurrentVOffset(Hint hint, HintVerticalAlign align)
+    private float GetCurrentVOffset(Hint hint, float textHeight)
     {
         float yCoordinate = hint.VOffsetTransitionState == null ? hint.YCoordinate : coordinateTool.GetYCoordinate(hint.VOffsetTransitionState.CurrentValue);
 
-        return 700 - coordinateTool.GetYCoordinate(yCoordinate, coordinateTool.GetTextHeight(hint), hint.YCoordinateAlign, HintVerticalAlign.Top) // Start at the top of the first line
+        return 700 - coordinateTool.GetYCoordinate(yCoordinate, textHeight, hint.YCoordinateAlign, HintVerticalAlign.Top) // Start at the top of the first line
                + hint.LineHeight; // Add extra line height on top of the first line so that the line height will not be calculated for the first line
     }
 
@@ -354,11 +392,13 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
             case HintAlignment.Right: messageBuilder.Append("<align=right>"); break;
         }
 
+        float textHeight = GetSize(hint).Height;
+
         // Get the bottom y coordinate of first line
-        float vOffset = GetVOffset(hint, HintVerticalAlign.Top);
+        float vOffset = GetVOffset(hint, textHeight);
 
         // Get the current v offset
-        float fromVOffset = GetCurrentVOffset(hint, HintVerticalAlign.Top);
+        float fromVOffset = GetCurrentVOffset(hint, textHeight);
 
         bool coordinateTransitionStateAdded = false;
 
@@ -393,9 +433,9 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
 
             messageBuilder.Append(result.LineInfos[i].CleanText); // Content
 
-            messageBuilder.Append("</voffset>"); // End Y coordinate
-
             messageBuilder.AppendLine(); // Break line
+
+            messageBuilder.Append("</voffset>"); // End Y coordinate
         }
 
         // End default alignment/size
@@ -406,10 +446,6 @@ internal class HintParser(ICache<Guid, (float, float)>? dynamicHintPositionCache
 
     private void Clear()
     {
-        // Return rented hints to pool
-        for (int i = 0; i < rentedHints.Count; i++) hintPool.Return(rentedHints[i]);
-
-        rentedHints.Clear();
         orderedHintGroups.Clear();
         dynamicHintColliders.Clear();
         parameterIndex = 0;

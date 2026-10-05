@@ -22,13 +22,13 @@ public class DynamicHintConfig : AbstractHintTemplate
     ///     Maps to <see cref="DynamicHint.RightBoundary" />.
     /// </summary>
     public float? RightBoundary { get; set; }
-    
+
     /// <summary>Gets or sets the preferred X coordinate. Maps to <see cref="DynamicHint.TargetX" />.</summary>
     public float? TargetX { get; set; }
 
     /// <summary>Gets or sets the preferred Y coordinate. Maps to <see cref="DynamicHint.TargetY" />.</summary>
     public float? TargetY { get; set; }
-    
+
     /// <summary>Gets or sets the spacing above this hint. Maps to <see cref="DynamicHint.TopMargin" />.</summary>
     public float? TopMargin { get; set; }
 
@@ -40,7 +40,7 @@ public class DynamicHintConfig : AbstractHintTemplate
 
     /// <summary>Gets or sets the right spacing during horizontal positioning. Maps to <see cref="DynamicHint.RightMargin" />.</summary>
     public float? RightMargin { get; set; }
-    
+
     /// <summary>
     ///     Gets or sets the display priority. Higher-priority hints are less likely to be displaced.
     ///     Maps to <see cref="DynamicHint.Priority" />.
@@ -52,7 +52,7 @@ public class DynamicHintConfig : AbstractHintTemplate
     ///     Maps to <see cref="DynamicHint.Strategy" />.
     /// </summary>
     public DynamicHintStrategy? Strategy { get; set; }
-    
+
     /// <summary>Applies all non-null properties to <paramref name="hint" />.</summary>
     public virtual void Apply(DynamicHint hint)
     {

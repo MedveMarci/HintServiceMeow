@@ -8,7 +8,6 @@ namespace HintServiceMeow.Core.Models.Transition;
 
 public class Transition
 {
-    private readonly object @lock = new();
     private float duration;
     private IAnimationCurve curve;
     private EasingType easing;
@@ -19,23 +18,14 @@ public class Transition
     /// </summary>
     public float Duration
     {
-        get
-        {
-            lock (@lock)
-            {
-                return duration;
-            }
-        }
+        get => duration;
 
         set
         {
-            lock (@lock)
-            {
-                if (value <= 0)
-                    value = 0.001f;
+            if (value <= 0)
+                value = 0.001f;
 
-                duration = value;
-            }
+            duration = value;
         }
     }
 
@@ -49,114 +39,87 @@ public class Transition
     /// </remarks>
     public EasingType Easing
     {
-        get
-        {
-            lock (@lock)
-            {
-                return easing;
-            }
-        }
+        get => easing;
 
         set
         {
-            lock (@lock)
-            {
-                curve = CurveFactory.BuildNormalized(value);
-                easing = value;
-            }
+            curve = CurveFactory.BuildNormalized(value);
+            easing = value;
         }
     }
 
     public IAnimationCurve NormalizedCurve
     {
-        get
-        {
-            lock (@lock)
-            {
-                return curve;
-            }
-        }
+        get => curve;
 
         set
         {
-            lock (@lock)
-            {
-                curve = value;
-                easing = EasingType.Custom;
-            }
+            curve = value;
+            easing = EasingType.Custom;
         }
     }
 
     internal static IAnimationCurveFactory CurveFactory { get; set; } = new UnityAnimationCurveFactory();
 
-    private Transition(IAnimationCurve curve)
+    private Transition(IAnimationCurve curve, EasingType easing, float duration)
     {
         this.curve = curve;
+        this.easing = easing;
+        this.duration = duration;
     }
 
     public static Transition Get(IAnimationCurve normalizedCurve, float duration = 0.5f)
     {
-        Transition t = new(normalizedCurve);
-        t.easing = EasingType.Custom;
-        t.duration = duration;
-        return t;
+        return new Transition(normalizedCurve, EasingType.Custom, duration);
     }
 
     public static Transition Get(EasingType type = EasingType.EaseInOut, float duration = 0.5f)
     {
-        Transition t = new(CurveFactory.BuildNormalized(type));
-        t.easing = type;
-        t.duration = duration;
-        return t;
+        return new Transition(CurveFactory.BuildNormalized(type), type, duration);
     }
 
     internal IAnimationCurve GetCurve(float from, float to)
     {
-        lock (@lock)
-        {
-            if (curve is null)
-                curve = CurveFactory.BuildNormalized(easing);
+        if (curve is null)
+            curve = CurveFactory.BuildNormalized(easing);
 
-            float range = to - from;
-            HsmKeyFrame[] keys = curve.Keys;
+        float range = to - from;
+        HsmKeyFrame[] keys = curve.Keys;
+        HsmWrapMode postWrapMode = curve.PostWrapMode;
 
-            int frameCount = keys.Length;
+        int frameCount = keys.Length;
 
-            if (curve.PostWrapMode == HsmWrapMode.Once)
-                frameCount += 1;
+        if (postWrapMode == HsmWrapMode.Once)
+            frameCount += 1;
 
-            HsmKeyFrame[] scaled = new HsmKeyFrame[frameCount];
+        HsmKeyFrame[] scaled = new HsmKeyFrame[frameCount];
 
-            for (int i = 0; i < keys.Length; i++)
-                scaled[i] = new HsmKeyFrame(keys[i].Time * duration, from + keys[i].Value * range, keys[i].InTangent * range / duration, keys[i].OutTangent * range / duration);
-            
-            if (curve.PostWrapMode == HsmWrapMode.Once)
-                scaled[frameCount - 1] = new HsmKeyFrame(99999f, to);
+        for (int i = 0; i < keys.Length; i++)
+            scaled[i] = new HsmKeyFrame(keys[i].Time * duration, from + keys[i].Value * range, keys[i].InTangent * range / duration, keys[i].OutTangent * range / duration);
 
-            IAnimationCurve result = CurveFactory.Build(scaled);
+        if (postWrapMode == HsmWrapMode.Once)
+            scaled[frameCount - 1] = new HsmKeyFrame(99999f, to);
 
-            result.PreWrapMode = curve.PreWrapMode;
-            result.PostWrapMode = curve.PostWrapMode;
+        IAnimationCurve result = CurveFactory.Build(scaled);
 
-            return result;
-        }
+        result.PreWrapMode = curve.PreWrapMode;
+        result.PostWrapMode = postWrapMode;
+
+        return result;
     }
 
     internal float Evaluate(float time, float start, float end)
     {
-        lock (@lock)
-        {
-            if (curve is null)
-                return end;
+        if (curve is null)
+            return end;
 
-            if (time > duration)
-                return end;
-            if (time < 0)
-                return start;
+        if (time > duration)
+            return end;
+        if (time < 0)
+            return start;
 
-            float dif = end - start;
+        float dif = end - start;
 
-            return start + dif * curve.Evaluate(time / duration);
-        }
+        return start + dif * curve.Evaluate(time / duration);
     }
 }

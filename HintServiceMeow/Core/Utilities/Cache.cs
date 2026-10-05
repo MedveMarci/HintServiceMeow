@@ -6,8 +6,6 @@ namespace HintServiceMeow.Core.Utilities;
 
 internal class Cache<TKey, TItem> : ICache<TKey, TItem>
 {
-    private readonly object cacheLock = new();
-
     private readonly Dictionary<TKey, CacheItem> cache = [];
     private readonly CacheItem removeQueueHead;
     private readonly int maxSize;
@@ -31,27 +29,24 @@ internal class Cache<TKey, TItem> : ICache<TKey, TItem>
 
         CacheItem item = new(key, data);
 
-        lock (cacheLock)
+        // Remove the old item
+        if (cache.TryGetValue(key, out CacheItem oldItem))
         {
-            // Remove the old item
-            if (cache.TryGetValue(key, out CacheItem oldItem))
-            {
-                RemoveFromList(oldItem);
-                cache.Remove(oldItem.Key);
-            }
+            RemoveFromList(oldItem);
+            cache.Remove(oldItem.Key);
+        }
 
-            cache.Add(key, item);
+        cache.Add(key, item);
 
-            // Inset into queue
-            InsertToList(item);
+        // Inset into queue
+        InsertToList(item);
 
-            // If reach maximum capacity, remove the oldest item
-            if (cache.Count > maxSize)
-            {
-                CacheItem lastItem = removeQueueHead.PrevItem;
-                RemoveFromList(lastItem);
-                cache.Remove(lastItem.Key);
-            }
+        // If reach maximum capacity, remove the oldest item
+        if (cache.Count > maxSize)
+        {
+            CacheItem lastItem = removeQueueHead.PrevItem;
+            RemoveFromList(lastItem);
+            cache.Remove(lastItem.Key);
         }
     }
 
@@ -86,16 +81,13 @@ internal class Cache<TKey, TItem> : ICache<TKey, TItem>
 #nullable disable
     public bool TryGet(TKey key, out TItem item)
     {
-        lock (cacheLock)
+        if (cache.TryGetValue(key, out CacheItem cachedItem))
         {
-            if (cache.TryGetValue(key, out CacheItem cachedItem))
-            {
-                RemoveFromList(cachedItem); // Remove from queue
-                InsertToList(cachedItem); // Insert to the front
+            RemoveFromList(cachedItem); // Remove from queue
+            InsertToList(cachedItem); // Insert to the front
 
-                item = cachedItem.Data;
-                return true;
-            }
+            item = cachedItem.Data;
+            return true;
         }
 
         item = default;
@@ -104,15 +96,12 @@ internal class Cache<TKey, TItem> : ICache<TKey, TItem>
 
     public bool TryRemove(TKey key, out TItem item)
     {
-        lock (cacheLock)
+        if (cache.TryGetValue(key, out CacheItem cachedItem))
         {
-            if (cache.TryGetValue(key, out CacheItem cachedItem))
-            {
-                RemoveFromList(cachedItem);
-                cache.Remove(cachedItem.Key);
-                item = cachedItem.Data;
-                return true;
-            }
+            RemoveFromList(cachedItem);
+            cache.Remove(cachedItem.Key);
+            item = cachedItem.Data;
+            return true;
         }
 
         item = default;

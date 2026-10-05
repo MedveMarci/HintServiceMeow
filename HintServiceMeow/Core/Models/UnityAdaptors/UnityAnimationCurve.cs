@@ -6,20 +6,8 @@ using UnityEngine;
 
 namespace HintServiceMeow.Core.Models.UnityAdaptors;
 
-/// <summary>
-///     Represents an animation curve that encapsulates Unity's AnimationCurve, providing methods to evaluate, create,
-///     and manipulate keyframes and curve behavior.
-/// </summary>
-/// <remarks>
-///     Use this class to define and modify animation curves for interpolating values over time, such
-///     as in animation systems or procedural motion. The curve supports different wrap modes and allows for adding,
-///     moving, and removing keyframes. Changes to the curve automatically update the internal cache of keyframes. This
-///     class is intended for scenarios where Unity's AnimationCurve functionality needs to be accessed or extended in a
-///     type-safe and convenient manner.
-/// </remarks>
 public class UnityAnimationCurve : IAnimationCurve, IEquatable<AnimationCurve>, IEquatable<UnityAnimationCurve>
 {
-    private readonly object cacheLock = new(); // Since curve is thread safe, only used for cache
     private readonly AnimationCurve curve;
     private HsmKeyFrame[]? keyFramesCache;
 
@@ -27,21 +15,18 @@ public class UnityAnimationCurve : IAnimationCurve, IEquatable<AnimationCurve>, 
     {
         get
         {
-            lock (cacheLock)
+            if (keyFramesCache == null || keyFramesCache.Length != curve.length)
             {
-                if (keyFramesCache == null || keyFramesCache.Length != curve.length)
+                keyFramesCache = new HsmKeyFrame[curve.length];
+                Keyframe[] unityKeys = curve.keys;
+                for (int i = 0; i < unityKeys.Length; i++)
                 {
-                    keyFramesCache = new HsmKeyFrame[curve.length];
-                    Keyframe[] unityKeys = curve.keys;
-                    for (int i = 0; i < unityKeys.Length; i++)
-                    {
-                        Keyframe keyFrame = unityKeys[i];
-                        keyFramesCache[i] = new HsmKeyFrame(keyFrame.time, keyFrame.value, keyFrame.inTangent, keyFrame.outTangent);
-                    }
+                    Keyframe keyFrame = unityKeys[i];
+                    keyFramesCache[i] = new HsmKeyFrame(keyFrame.time, keyFrame.value, keyFrame.inTangent, keyFrame.outTangent);
                 }
-
-                return keyFramesCache;
             }
+
+            return keyFramesCache;
         }
     }
 
@@ -62,11 +47,8 @@ public class UnityAnimationCurve : IAnimationCurve, IEquatable<AnimationCurve>, 
         get => curve.keys;
         set
         {
-            lock (cacheLock)
-            {
-                curve.keys = value;
-                keyFramesCache = null; // Clear Cache
-            }
+            curve.keys = value;
+            keyFramesCache = null; // Clear Cache
         }
     }
 
@@ -133,65 +115,44 @@ public class UnityAnimationCurve : IAnimationCurve, IEquatable<AnimationCurve>, 
 
     public int AddKey(float time, float value)
     {
-        lock (cacheLock)
-        {
-            keyFramesCache = null; // Clear Cache
-            return curve.AddKey(time, value);
-        }
+        keyFramesCache = null; // Clear Cache
+        return curve.AddKey(time, value);
     }
 
     public int AddKey(Keyframe key)
     {
-        lock (cacheLock)
-        {
-            keyFramesCache = null; // Clear Cache
-            return curve.AddKey(key);
-        }
+        keyFramesCache = null; // Clear Cache
+        return curve.AddKey(key);
     }
 
     public int MoveKey(int index, Keyframe key)
     {
-        lock (cacheLock)
-        {
-            keyFramesCache = null; // Clear Cache
-            return curve.MoveKey(index, key);
-        }
+        keyFramesCache = null; // Clear Cache
+        return curve.MoveKey(index, key);
     }
 
     public void RemoveKey(int index)
     {
-        lock (cacheLock)
-        {
-            keyFramesCache = null; // Clear Cache
-            curve.RemoveKey(index);
-        }
+        keyFramesCache = null; // Clear Cache
+        curve.RemoveKey(index);
     }
 
     public void ClearKeys()
     {
-        lock (cacheLock)
-        {
-            keyFramesCache = null; // Clear Cache
-            curve.ClearKeys();
-        }
+        keyFramesCache = null; // Clear Cache
+        curve.ClearKeys();
     }
 
     public void SmoothTangents(int index, float weight)
     {
-        lock (cacheLock)
-        {
-            curve.SmoothTangents(index, weight);
-            keyFramesCache = null; // Clear Cache
-        }
+        curve.SmoothTangents(index, weight);
+        keyFramesCache = null; // Clear Cache
     }
 
     public void CopyFrom(AnimationCurve other)
     {
-        lock (cacheLock)
-        {
-            curve.CopyFrom(other);
-            keyFramesCache = null; // Clear Cache
-        }
+        curve.CopyFrom(other);
+        keyFramesCache = null; // Clear Cache
     }
 
     public override bool Equals(object other)

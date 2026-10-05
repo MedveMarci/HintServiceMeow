@@ -11,7 +11,6 @@ namespace HintServiceMeow.Core.Models;
 /// </summary>
 public class HintCollection : INotifyCollectionChanged
 {
-    private readonly object collectionLock = new();
     private readonly Dictionary<string, List<AbstractHint>> hintGroups = new();
 
     private AbstractHint[][]? allGroupsCache;
@@ -24,19 +23,16 @@ public class HintCollection : INotifyCollectionChanged
     {
         get
         {
-            lock (collectionLock)
+            if (allGroupsCache == null)
             {
-                if (allGroupsCache == null)
-                {
-                    allGroupsCache = new AbstractHint[hintGroups.Count][];
+                allGroupsCache = new AbstractHint[hintGroups.Count][];
 
-                    int index = 0;
+                int index = 0;
 
-                    foreach (List<AbstractHint> group in hintGroups.Values) allGroupsCache[index++] = [.. group];
-                }
-
-                return allGroupsCache;
+                foreach (List<AbstractHint> group in hintGroups.Values) allGroupsCache[index++] = [.. group];
             }
+
+            return allGroupsCache;
         }
     }
 
@@ -47,25 +43,22 @@ public class HintCollection : INotifyCollectionChanged
     {
         get
         {
-            lock (collectionLock)
+            if (allHintsCache == null)
             {
-                if (allHintsCache == null)
+                int total = 0;
+                foreach (List<AbstractHint> group in hintGroups.Values) total += group.Count;
+
+                allHintsCache = new AbstractHint[total];
+
+                int index = 0;
+                foreach (List<AbstractHint> group in hintGroups.Values)
                 {
-                    int total = 0;
-                    foreach (List<AbstractHint> group in hintGroups.Values) total += group.Count;
-
-                    allHintsCache = new AbstractHint[total];
-
-                    int index = 0;
-                    foreach (List<AbstractHint> group in hintGroups.Values)
-                    {
-                        group.CopyTo(allHintsCache, index);
-                        index += group.Count;
-                    }
+                    group.CopyTo(allHintsCache, index);
+                    index += group.Count;
                 }
-
-                return allHintsCache;
             }
+
+            return allHintsCache;
         }
     }
 
@@ -85,13 +78,10 @@ public class HintCollection : INotifyCollectionChanged
         if (assemblyName is null)
             return AllHints;
 
-        lock (collectionLock)
-        {
-            if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> collection))
-                return [];
+        if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> collection))
+            return [];
 
-            return [.. collection];
-        }
+        return [.. collection];
     }
 
     /// <summary>
@@ -102,35 +92,29 @@ public class HintCollection : INotifyCollectionChanged
     /// <returns>A read-only list of hints that match both the assembly name and the predicate.</returns>
     public AbstractHint[] GetHints(string assemblyName, Func<AbstractHint, bool> predicate)
     {
-        lock (collectionLock)
+        if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint>? collection))
+            return [];
+
+        List<AbstractHint> resultList = new(collection.Count);
+
+        for (int i = 0; i < collection.Count; i++)
         {
-            if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint>? collection))
-                return [];
-
-            List<AbstractHint> resultList = new(collection.Count);
-
-            for (int i = 0; i < collection.Count; i++)
-            {
-                AbstractHint hint = collection[i];
-                if (predicate(hint)) resultList.Add(hint);
-            }
-
-            return [.. resultList];
+            AbstractHint hint = collection[i];
+            if (predicate(hint)) resultList.Add(hint);
         }
+
+        return [.. resultList];
     }
 
     internal void AddHint(string assemblyName, AbstractHint hint)
     {
-        lock (collectionLock)
+        if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> collection))
         {
-            if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> collection))
-            {
-                collection = [];
-                hintGroups.Add(assemblyName, collection);
-            }
-
-            collection.Add(hint);
+            collection = [];
+            hintGroups.Add(assemblyName, collection);
         }
+
+        collection.Add(hint);
 
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, hint));
     }
@@ -141,37 +125,34 @@ public class HintCollection : INotifyCollectionChanged
 
         List<string>? keysToRemove = null;
 
-        lock (collectionLock)
+        // If assemblyName is null, remove the hint from all groups.
+        if (assemblyName is null)
         {
-            // If assemblyName is null, remove the hint from all groups.
-            if (assemblyName is null)
+            foreach (KeyValuePair<string, List<AbstractHint>> group in hintGroups)
             {
-                foreach (KeyValuePair<string, List<AbstractHint>> group in hintGroups)
+                if (group.Value.Remove(hint)) success = true;
+
+                if (group.Value.Count == 0)
                 {
-                    if (group.Value.Remove(hint)) success = true;
-
-                    if (group.Value.Count == 0)
-                    {
-                        keysToRemove ??= [];
-                        keysToRemove.Add(group.Key);
-                    }
+                    keysToRemove ??= [];
+                    keysToRemove.Add(group.Key);
                 }
-
-                // Remove all empty groups.
-                if (keysToRemove is not null)
-                    foreach (string key in keysToRemove)
-                        hintGroups.Remove(key);
             }
-            else
-            {
-                // If assemblyName is not null, remove the hint from the specified group.
-                if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> assemblyCollection))
-                    return false;
 
-                if (assemblyCollection.Remove(hint)) success = true;
+            // Remove all empty groups.
+            if (keysToRemove is not null)
+                foreach (string key in keysToRemove)
+                    hintGroups.Remove(key);
+        }
+        else
+        {
+            // If assemblyName is not null, remove the hint from the specified group.
+            if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> assemblyCollection))
+                return false;
 
-                if (assemblyCollection.Count == 0) hintGroups.Remove(assemblyName);
-            }
+            if (assemblyCollection.Remove(hint)) success = true;
+
+            if (assemblyCollection.Count == 0) hintGroups.Remove(assemblyName);
         }
 
         if (success) OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, hint));
@@ -184,43 +165,12 @@ public class HintCollection : INotifyCollectionChanged
         List<AbstractHint> updatedHints = [];
         List<string>? keysToRemove = null;
 
-        lock (collectionLock)
+        // If assemblyName is null, remove all hints that satisfy the predicate from all groups.
+        if (assemblyName is null)
         {
-            // If assemblyName is null, remove all hints that satisfy the predicate from all groups.
-            if (assemblyName is null)
+            foreach (KeyValuePair<string, List<AbstractHint>> group in hintGroups)
             {
-                foreach (KeyValuePair<string, List<AbstractHint>> group in hintGroups)
-                {
-                    group.Value.RemoveAll(h =>
-                    {
-                        if (predicate(h))
-                        {
-                            updatedHints.Add(h);
-                            return true;
-                        }
-
-                        return false;
-                    });
-
-                    if (group.Value.Count == 0)
-                    {
-                        keysToRemove ??= [];
-                        keysToRemove.Add(group.Key);
-                    }
-                }
-
-                // Remove all empty groups.
-                if (keysToRemove is not null)
-                    foreach (string key in keysToRemove)
-                        hintGroups.Remove(key);
-            }
-            else
-            {
-                // If assemblyName is not null, remove all hints that satisfy the predicate from the specified group.
-                if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> assemblyCollection))
-                    return updatedHints;
-
-                assemblyCollection.RemoveAll(h =>
+                group.Value.RemoveAll(h =>
                 {
                     if (predicate(h))
                     {
@@ -231,8 +181,36 @@ public class HintCollection : INotifyCollectionChanged
                     return false;
                 });
 
-                if (assemblyCollection.Count == 0) hintGroups.Remove(assemblyName);
+                if (group.Value.Count == 0)
+                {
+                    keysToRemove ??= [];
+                    keysToRemove.Add(group.Key);
+                }
             }
+
+            // Remove all empty groups.
+            if (keysToRemove is not null)
+                foreach (string key in keysToRemove)
+                    hintGroups.Remove(key);
+        }
+        else
+        {
+            // If assemblyName is not null, remove all hints that satisfy the predicate from the specified group.
+            if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> assemblyCollection))
+                return updatedHints;
+
+            assemblyCollection.RemoveAll(h =>
+            {
+                if (predicate(h))
+                {
+                    updatedHints.Add(h);
+                    return true;
+                }
+
+                return false;
+            });
+
+            if (assemblyCollection.Count == 0) hintGroups.Remove(assemblyName);
         }
 
         if (updatedHints.Count > 0)
@@ -244,22 +222,19 @@ public class HintCollection : INotifyCollectionChanged
 
     internal void ClearHints(string? assemblyName)
     {
-        lock (collectionLock)
+        // If assemblyName is null, clear all groups.
+        if (assemblyName is null)
         {
-            // If assemblyName is null, clear all groups.
-            if (assemblyName is null)
-            {
-                hintGroups.Clear();
-            }
-            else
-            {
-                // If assemblyName is not null, clear the specified group.
-                if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> assemblyCollection))
-                    return;
+            hintGroups.Clear();
+        }
+        else
+        {
+            // If assemblyName is not null, clear the specified group.
+            if (!hintGroups.TryGetValue(assemblyName, out List<AbstractHint> assemblyCollection))
+                return;
 
-                assemblyCollection.Clear();
-                hintGroups.Remove(assemblyName);
-            }
+            assemblyCollection.Clear();
+            hintGroups.Remove(assemblyName);
         }
 
         OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
@@ -267,12 +242,9 @@ public class HintCollection : INotifyCollectionChanged
 
     private void OnCollectionChanged(NotifyCollectionChangedEventArgs argument)
     {
-        lock (collectionLock)
-        {
-            // Clear caches on any collection change.
-            allGroupsCache = null;
-            allHintsCache = null;
-        }
+        // Clear caches on any collection change.
+        allGroupsCache = null;
+        allHintsCache = null;
 
         CollectionChanged?.Invoke(this, argument);
     }

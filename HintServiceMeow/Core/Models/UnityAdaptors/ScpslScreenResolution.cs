@@ -1,66 +1,58 @@
 using System.Collections.Generic;
 using System.ComponentModel;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Interface;
-using HintServiceMeow.Core.Utilities.Tools;
 using MEC;
 using Mathf = UnityEngine.Mathf;
 
-namespace HintServiceMeow.Core.Models.UniryAdaptors;
+namespace HintServiceMeow.Core.Models.UnityAdaptors;
 
 internal class ScpslScreenResolution : IScreenResolution
 {
-    private static readonly object StaticStatusLock = new();
     private static readonly List<ScpslScreenResolution> Instances = [];
-    private static CoroutineHandle coroutineHandle;
+    private static CoroutineHandle _coroutineHandle;
 
-    private static float yScreenEdge;
+    private static float _yScreenEdge;
     private readonly ReferenceHub? referenceHub;
-    private volatile float xScreenEdge;
-    private volatile float xyRatio;
+    private float xScreenEdge;
 
-    public float XyRatio => xyRatio;
+    public float XyRatio { get; private set; }
 
     public ScpslScreenResolution(ReferenceHub referenceHub)
     {
-        lock (StaticStatusLock)
-        {
-            if (yScreenEdge == 0) yScreenEdge = AspectRatioSync.YScreenEdge;
+        if (_yScreenEdge == 0) _yScreenEdge = AspectRatioSync.YScreenEdge;
 
-            this.referenceHub = referenceHub;
+        this.referenceHub = referenceHub;
 
-            _ = TryUpdate();
+        _ = TryUpdate();
 
-            if (!coroutineHandle.IsRunning) coroutineHandle = Timing.RunCoroutine(CoroutineMethod());
+        if (!_coroutineHandle.IsRunning) _coroutineHandle = Timing.RunCoroutine(CoroutineMethod());
 
-            Instances.Add(this);
+        Instances.Add(this);
 
-            Logger.Instance.Debug($"[ScpslScreenResolution] ScpslScreenResolution object initialized for player {referenceHub.PlayerId}. Current X/Y ratio: {XyRatio}");
-        }
+        LogManager.Debug($"[ScpslScreenResolution] ScpslScreenResolution object initialized for player {referenceHub.PlayerId}. Current X/Y ratio: {XyRatio}");
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     private static IEnumerator<float> CoroutineMethod()
     {
-        Logger.Instance.Debug("[ScpslScreenResolution] Aspect ratio synchronization coroutine started.");
+        LogManager.Debug("[ScpslScreenResolution] Aspect ratio synchronization coroutine started.");
 
         while (true)
         {
             List<ScpslScreenResolution> updatedInstances = [];
 
-            lock (StaticStatusLock)
-            {
-                Instances.RemoveAll(x => x.referenceHub == null);
+            Instances.RemoveAll(x => x.referenceHub == null);
 
-                foreach (ScpslScreenResolution resolution in Instances)
-                    if (resolution.TryUpdate())
-                        updatedInstances.Add(resolution);
-            }
+            foreach (ScpslScreenResolution resolution in Instances)
+                if (resolution.TryUpdate())
+                    updatedInstances.Add(resolution);
 
             foreach (ScpslScreenResolution resolution in updatedInstances)
             {
                 resolution.PropertyChanged?.Invoke(resolution, new PropertyChangedEventArgs(nameof(XyRatio)));
-                Logger.Instance.Debug($"[ScpslScreenResolution] ScpslScreenResolution object for player {resolution.referenceHub!.PlayerId} updated. Current X/Y ratio: {resolution.XyRatio}");
+                LogManager.Debug($"[ScpslScreenResolution] ScpslScreenResolution object for player {resolution.referenceHub!.PlayerId} updated. Current X/Y ratio: {resolution.XyRatio}");
             }
 
             yield return Timing.WaitForSeconds(1f);
@@ -72,7 +64,7 @@ internal class ScpslScreenResolution : IScreenResolution
         if (xScreenEdge != referenceHub!.aspectRatioSync.XScreenEdge)
         {
             xScreenEdge = referenceHub.aspectRatioSync.XScreenEdge;
-            xyRatio = Mathf.Tan(xScreenEdge * Mathf.Deg2Rad) / Mathf.Tan(yScreenEdge * Mathf.Deg2Rad);
+            XyRatio = Mathf.Tan(xScreenEdge * Mathf.Deg2Rad) / Mathf.Tan(_yScreenEdge * Mathf.Deg2Rad);
 
             return true;
         }

@@ -23,7 +23,7 @@ public sealed class SpriteTag : RichTag
     {
         this.attribute = attribute;
     }
-    
+
     /// <summary>
     ///     Creates a <see cref="SpriteTag" /> that references a sprite by its name in the Sprite Asset.
     /// </summary>

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using HintServiceMeow.ApiFeatures;
 using HintServiceMeow.Core.Enum;
 using HintServiceMeow.Core.Interface;
 using HintServiceMeow.Core.Models.Arguments;
@@ -11,7 +11,6 @@ using HintServiceMeow.Core.Models.Parser;
 using HintServiceMeow.Core.Models.Parser.Style;
 using HintServiceMeow.Core.Utilities.Parser;
 using HintServiceMeow.Core.Utilities.Pools;
-using HintServiceMeow.Core.Utilities.Tools;
 using HintServiceMeow.Core.Utilities.UnityAdaptors;
 
 namespace HintServiceMeow.Core.Utilities;
@@ -19,7 +18,7 @@ namespace HintServiceMeow.Core.Utilities;
 internal class CompatibilityAdaptor : ICompatibilityAdaptor
 {
     internal static readonly HashSet<string> RegisteredAssemblies = []; // All assemblies that used compatibility adaptor
-    private static readonly ICache<string, IReadOnlyList<Hint>> HintCache = new Cache<string, IReadOnlyList<Hint>>(500);
+    private static readonly Cache<string, IReadOnlyList<Hint>> HintCache = new(500);
 
     private const float LineSpacing = 1.2f;
 
@@ -95,10 +94,7 @@ internal class CompatibilityAdaptor : ICompatibilityAdaptor
             removeHandles.Remove(internalAssemblyName);
         });
 
-        DateTime expireTime = DateTime.Now.AddSeconds(Math.Min(duration, 5f)); // Wait for at most 5 second and at least the duration
-
-        // Start new remove action, remove after the Duration
-        _ = InternalShowHint(internalAssemblyName, content, ev.Parameters, expireTime);
+        InternalShowHint(internalAssemblyName, content, ev.Parameters);
     }
 
     private static float SanitizeDuration(float duration)
@@ -111,7 +107,7 @@ internal class CompatibilityAdaptor : ICompatibilityAdaptor
         return duration > MaxDuration ? MaxDuration : duration;
     }
 
-    private async Task InternalShowHint(string internalAssemblyName, string content, IParameter[] parameters, DateTime expireTime)
+    private void InternalShowHint(string internalAssemblyName, string content, IParameter[] parameters)
     {
         try
         {
@@ -124,20 +120,19 @@ internal class CompatibilityAdaptor : ICompatibilityAdaptor
             }
 
             // Parse the content to hints
-            IReadOnlyList<Hint> hintList = await ConcurrentTaskDispatcher.Instance.Enqueue(() => Task.FromResult(ParseRichTextToHints(content, parameters))).ConfigureAwait(false);
+            IReadOnlyList<Hint> hintList = ParseRichTextToHints(content, parameters);
 
             // Add result to cache
             if (useCache)
                 HintCache.Add(content, hintList);
 
-            // Update if the content is not outdated
-            if (DateTime.Now < expireTime) ReplaceHint(internalAssemblyName, hintList);
+            ReplaceHint(internalAssemblyName, hintList);
         }
         catch (Exception ex)
         {
             // Make sure to clear hint if error occurs
             playerDisplay.InternalClearHint(internalAssemblyName);
-            Logger.Instance.Error($"Error while generating hint for {internalAssemblyName}: {ex}");
+            LogManager.Error($"Error while generating hint for {internalAssemblyName}: {ex}");
         }
     }
 
@@ -170,7 +165,7 @@ internal class CompatibilityAdaptor : ICompatibilityAdaptor
         richTextParserPool.Return(parser);
 
         if (lines.Count == 0) return new List<Hint>();
-        
+
         IParameter[] resolvedParameters = parserResult.Parameters;
 
         // Add the natural line height (leading) between lines so multi-line content does not
@@ -231,6 +226,9 @@ internal class CompatibilityAdaptor : ICompatibilityAdaptor
         string[] words = cleanText.Split(' ');
         StringBuilder current = StringBuilderPool.Instance.Rent();
 
+        List<(string Name, string? Value)> openTags = [];
+        string linePrefix = string.Empty;
+
         try
         {
             foreach (string word in words)
@@ -240,25 +238,79 @@ internal class CompatibilityAdaptor : ICompatibilityAdaptor
                     current.Append(' ');
                 current.Append(word);
 
-                if (lengthBefore == 0)
-                    continue;
-
-                if (MeasureLineWidth(parser, current.ToString()) > maxWidth)
+                if (lengthBefore > 0 && MeasureLineWidth(parser, linePrefix + current) > maxWidth)
                 {
                     current.Length = lengthBefore;
-                    AddParsedLine(parser, current.ToString(), output);
+                    AddParsedLine(parser, linePrefix + current + BuildClosingTags(openTags), output);
+
+                    linePrefix = BuildOpeningTags(openTags);
                     current.Clear();
                     current.Append(word);
                 }
+
+                TrackTags(word, openTags);
             }
 
             if (current.Length > 0)
-                AddParsedLine(parser, current.ToString(), output);
+                AddParsedLine(parser, linePrefix + current, output);
         }
         finally
         {
             StringBuilderPool.Instance.Return(current);
         }
+    }
+
+    private static void TrackTags(string word, List<(string Name, string? Value)> openTags)
+    {
+        if (word.IndexOf('<') < 0)
+            return;
+
+        Tokenizer tokenizer = TokenizerPool.Instance.Rent();
+        List<Models.Parser.Token> tokens = tokenizer.Tokenize(word, []);
+        TokenizerPool.Instance.Return(tokenizer);
+
+        foreach (Models.Parser.Token token in tokens)
+        {
+            bool inNoParse = openTags.Exists(tag => tag.Name == "noparse");
+
+            switch (token.Type)
+            {
+                case RichTextTokenType.OpenTag when !inNoParse:
+                    openTags.Add((token.TagName!, token.TagValue));
+                    break;
+
+                case RichTextTokenType.CloseTag when !inNoParse || token.TagName == "noparse":
+                    int index = openTags.FindLastIndex(tag => tag.Name == token.TagName);
+                    if (index >= 0)
+                        openTags.RemoveAt(index);
+                    break;
+            }
+        }
+    }
+
+    private static string BuildOpeningTags(List<(string Name, string? Value)> openTags)
+    {
+        StringBuilder openingTags = new();
+
+        foreach ((string name, string? value) in openTags)
+        {
+            openingTags.Append('<').Append(name);
+            if (!string.IsNullOrEmpty(value))
+                openingTags.Append('=').Append(value);
+            openingTags.Append('>');
+        }
+
+        return openingTags.ToString();
+    }
+
+    private static string BuildClosingTags(List<(string Name, string? Value)> openTags)
+    {
+        StringBuilder closingTags = new();
+
+        for (int i = openTags.Count - 1; i >= 0; i--)
+            closingTags.Append("</").Append(openTags[i].Name).Append('>');
+
+        return closingTags.ToString();
     }
 
     private float MeasureLineWidth(RichTextParser parser, string text)
